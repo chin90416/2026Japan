@@ -9,27 +9,41 @@ export function useGlobal() {
 }
 
 export function GlobalProvider({ children }) {
-    const [isGlobalLoading, setIsGlobalLoading] = useState(true);
-    // 匯率狀態 (預設: 1 JPY = 0.21 TWD)
-    const [exchangeRate, setExchangeRate] = useState(0.21);
+    // 初始化時，優先從 localStorage 撈取先前的快取，達到瞬間載入
+    const [isGlobalLoading, setIsGlobalLoading] = useState(false);
 
-    // 行程日期狀態 (預設: 10/25 起 5 天)
-    const [tripDates, setTripDates] = useState([
-        '10/25 (Day 1)',
-        '10/26 (Day 2)',
-        '10/27 (Day 3)',
-        '10/28 (Day 4)',
-        '10/29 (Day 5)'
-    ]);
+    const [exchangeRate, setExchangeRate] = useState(() => {
+        const cached = localStorage.getItem('cachedExchangeRate');
+        return cached ? parseFloat(cached) : 0.21;
+    });
+
+    const [tripDates, setTripDates] = useState(() => {
+        const cached = localStorage.getItem('cachedTripDates');
+        if (cached) {
+            try { return JSON.parse(cached); } catch (e) { }
+        }
+        return [
+            '10/25 (Day 1)',
+            '10/26 (Day 2)',
+            '10/27 (Day 3)',
+            '10/28 (Day 4)',
+            '10/29 (Day 5)'
+        ];
+    });
 
     // 啟動時訂閱 Firestore
     useEffect(() => {
         const unsubscribe = subscribeToTripSettings((data) => {
             if (data) {
-                if (data.exchangeRate) setExchangeRate(data.exchangeRate);
-                if (data.tripDates && data.tripDates.length > 0) setTripDates(data.tripDates);
+                if (data.exchangeRate) {
+                    setExchangeRate(data.exchangeRate);
+                    localStorage.setItem('cachedExchangeRate', data.exchangeRate.toString());
+                }
+                if (data.tripDates && data.tripDates.length > 0) {
+                    setTripDates(data.tripDates);
+                    localStorage.setItem('cachedTripDates', JSON.stringify(data.tripDates));
+                }
             }
-            setIsGlobalLoading(false);
         });
         return () => unsubscribe();
     }, []);
