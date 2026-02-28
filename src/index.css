@@ -35,6 +35,8 @@
 
 html,
 body {
+  font-size: 16px;
+  font: -apple-system-body;
   font-family: var(--font-family);
   background-color: var(--bg-color);
   color: var(--text-primary);
@@ -51,6 +53,7 @@ button {
   border: none;
   background: none;
   font-family: inherit;
+  font-size: inherit;
 }
 
 input,
