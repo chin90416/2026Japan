@@ -17,6 +17,8 @@ export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
     const [swipeOffset, setSwipeOffset] = useState(0);
     const [isSwiping, setIsSwiping] = useState(false);
     const [startX, setStartX] = useState(0);
+    const [startY, setStartY] = useState(0);
+    const [isVerticalScroll, setIsVerticalScroll] = useState(false);
     const cardRef = useRef(null);
     const hasDragged = useRef(false);
     const [cardWidth, setCardWidth] = useState(300); // 預設寬度
@@ -37,26 +39,37 @@ export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
         position: 'relative',
         zIndex: isDragging ? 99 : 1,
         display: 'flex',
-        touchAction: 'none',
+        touchAction: 'pan-y',
     };
 
     // Touch handlers for swipe to delete (Independent of DnD Kit which handles long-press drag)
     const handleTouchStart = (e) => {
         if (e.touches.length === 1) {
             setStartX(e.touches[0].clientX);
+            setStartY(e.touches[0].clientY);
             setIsSwiping(true);
+            setIsVerticalScroll(false);
             hasDragged.current = false;
         }
     };
 
     const handleTouchMove = (e) => {
-        if (!isSwiping) return;
-        const diff = e.touches[0].clientX - startX;
-        if (Math.abs(diff) > 5) {
+        if (!isSwiping || isVerticalScroll) return;
+
+        const diffX = e.touches[0].clientX - startX;
+        const diffY = e.touches[0].clientY - startY;
+
+        // 如果垂直移動距離大於水平，判定為使用者正在上下捲動畫軸
+        if (Math.abs(diffY) > 10 && Math.abs(diffY) > Math.abs(diffX)) {
+            setIsVerticalScroll(true);
+            return;
+        }
+
+        if (Math.abs(diffX) > 5) {
             hasDragged.current = true;
         }
-        if (diff < 0) {
-            setSwipeOffset(Math.max(diff, -cardWidth));
+        if (diffX < 0) {
+            setSwipeOffset(Math.max(diffX, -cardWidth));
         } else {
             setSwipeOffset(0);
         }
