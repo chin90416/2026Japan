@@ -9,6 +9,7 @@ export function useGlobal() {
 }
 
 export function GlobalProvider({ children }) {
+    const [isGlobalLoading, setIsGlobalLoading] = useState(true);
     // 匯率狀態 (預設: 1 JPY = 0.21 TWD)
     const [exchangeRate, setExchangeRate] = useState(0.21);
 
@@ -28,18 +29,24 @@ export function GlobalProvider({ children }) {
                 if (data.exchangeRate) setExchangeRate(data.exchangeRate);
                 if (data.tripDates && data.tripDates.length > 0) setTripDates(data.tripDates);
             }
+            setIsGlobalLoading(false);
         });
         return () => unsubscribe();
     }, []);
 
     // 提供給 Info.jsx 呼叫修改雲端匯率的 method
     const changeExchangeRate = async (rate) => {
-        setExchangeRate(rate); // 樂觀更新 (Optimistic UI) 
-        await updateTripSettings({ exchangeRate: rate });
+        try {
+            setExchangeRate(rate); // 樂觀更新 (Optimistic UI) 
+            await updateTripSettings({ exchangeRate: rate });
+        } catch (error) {
+            console.error("更新匯率失敗", error);
+            alert("儲存匯率失敗！請檢查 Firebase Firestore 權限規則設定：\n" + error.message);
+        }
     };
 
     // 輔助函式：根據起始日期（YYYY-MM-DD）與天數生成日期陣列
-    const generateTripDates = (startDateString, daysCount) => {
+    const generateTripDates = async (startDateString, daysCount) => {
         try {
             const [year, month, day] = startDateString.split('-');
             if (!year || !month || !day) return;
@@ -52,10 +59,11 @@ export function GlobalProvider({ children }) {
             }
             if (newDates.length > 0) {
                 setTripDates(newDates); // 樂觀更新
-                updateTripSettings({ tripDates: newDates }); // 寫回雲端
+                await updateTripSettings({ tripDates: newDates }); // 寫回雲端
             }
-        } catch (e) {
-            console.error("Invalid date generation", e);
+        } catch (error) {
+            console.error("更新日期失敗", error);
+            alert("儲存日期失敗！請檢查 Firebase Firestore 權限規則：\n" + error.message);
         }
     };
 
@@ -64,7 +72,8 @@ export function GlobalProvider({ children }) {
         setExchangeRate: changeExchangeRate,
         tripDates,
         setTripDates,
-        generateTripDates
+        generateTripDates,
+        isGlobalLoading
     };
 
     return (

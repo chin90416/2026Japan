@@ -1,6 +1,6 @@
 import React from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { GlobalProvider } from './contexts/GlobalContext';
+import { GlobalProvider, useGlobal } from './contexts/GlobalContext';
 import Login from './components/auth/Login';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import BottomNav from './components/layout/BottomNav';
@@ -18,9 +18,22 @@ function PrivateRoute({ children }) {
 
 function AppContent() {
   const { currentUser } = useAuth();
+  const { isGlobalLoading } = useGlobal();
 
   if (!currentUser) {
     return <Login />;
+  }
+
+  if (isGlobalLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-color)', color: 'var(--text-secondary)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid rgba(0,0,0,0.1)', borderTopColor: 'var(--accent-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+          <div>載入行程綁定資料中...</div>
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    );
   }
 
   return (
