@@ -110,40 +110,6 @@ export default function FloatingRateCalculator() {
                             <span style={{ fontWeight: 'bold' }}>當前匯率：</span> 1 {isJpyToTwd ? 'JPY' : 'TWD'} ≈ {isJpyToTwd ? RATE_JPY_TO_TWD : RATE_TWD_TO_JPY.toFixed(4)} {isJpyToTwd ? 'TWD' : 'JPY'}
                         </div>
 
-                        {/* Currency Switcher */}
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', justifyContent: 'center' }}>
-                            <button
-                                onClick={() => setIsJpyToTwd(true)}
-                                style={{
-                                    flex: 1,
-                                    padding: '8px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    backgroundColor: isJpyToTwd ? 'var(--accent-color)' : '#f0f0f0',
-                                    color: isJpyToTwd ? 'white' : 'var(--text-primary)',
-                                    fontWeight: isJpyToTwd ? 'bold' : 'normal',
-                                    border: 'none',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                日幣 → 台幣
-                            </button>
-                            <button
-                                onClick={() => setIsJpyToTwd(false)}
-                                style={{
-                                    flex: 1,
-                                    padding: '8px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    backgroundColor: !isJpyToTwd ? 'var(--accent-color)' : '#f0f0f0',
-                                    color: !isJpyToTwd ? 'white' : 'var(--text-primary)',
-                                    fontWeight: !isJpyToTwd ? 'bold' : 'normal',
-                                    border: 'none',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                台幣 → 日幣
-                            </button>
-                        </div>
-
                         {/* Input Field */}
                         <div style={{ marginBottom: '16px' }}>
                             <label style={{ display: 'block', fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
@@ -163,6 +129,40 @@ export default function FloatingRateCalculator() {
                                     placeholder="0"
                                 />
                             </div>
+                        </div>
+
+                        {/* Currency Switcher */}
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', justifyContent: 'center' }}>
+                            <button
+                                onClick={() => setIsJpyToTwd(true)}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    backgroundColor: isJpyToTwd ? 'var(--accent-color)' : '#f0f0f0',
+                                    color: isJpyToTwd ? 'white' : 'var(--text-primary)',
+                                    fontWeight: isJpyToTwd ? 'bold' : 'normal',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                日幣
+                            </button>
+                            <button
+                                onClick={() => setIsJpyToTwd(false)}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    backgroundColor: !isJpyToTwd ? 'var(--accent-color)' : '#f0f0f0',
+                                    color: !isJpyToTwd ? 'white' : 'var(--text-primary)',
+                                    fontWeight: !isJpyToTwd ? 'bold' : 'normal',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                台幣
+                            </button>
                         </div>
 
                         {/* Custom Keypad */}
