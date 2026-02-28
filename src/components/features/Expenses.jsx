@@ -122,10 +122,10 @@ export default function Expenses() {
             }}>
                 <div style={{ fontSize: '0.9rem', opacity: 0.8, marginBottom: '8px' }}>總花費</div>
                 <div style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '4px' }}>
-                    ¥ {totalJpy.toLocaleString()}
+                    NT$ {totalTwd.toLocaleString()}
                 </div>
                 <div style={{ fontSize: '1rem', opacity: 0.9 }}>
-                    ≈ NT$ {totalTwd.toLocaleString()}
+                    ≈ ¥ {totalJpy.toLocaleString()}
                 </div>
                 {/* Decorative circle */}
                 <div style={{
