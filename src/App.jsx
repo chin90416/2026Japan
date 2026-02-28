@@ -37,6 +37,9 @@ function AppContent() {
     return <Login />;
   }
 
+  if (isGlobalLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <Router>

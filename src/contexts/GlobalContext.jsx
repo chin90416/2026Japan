@@ -10,7 +10,7 @@ export function useGlobal() {
 
 export function GlobalProvider({ children }) {
     // 初始化時，優先從 localStorage 撈取先前的快取，達到瞬間載入
-    const [isGlobalLoading, setIsGlobalLoading] = useState(false);
+    const [isGlobalLoading, setIsGlobalLoading] = useState(true); // 預設為 true，等待首次讀取完成
 
     const [exchangeRate, setExchangeRate] = useState(() => {
         const cached = localStorage.getItem('cachedExchangeRate');
@@ -33,6 +33,7 @@ export function GlobalProvider({ children }) {
 
     // 啟動時訂閱 Firestore
     useEffect(() => {
+        let isFirstLoad = true;
         const unsubscribe = subscribeToTripSettings((data) => {
             if (data) {
                 if (data.exchangeRate) {
@@ -43,6 +44,10 @@ export function GlobalProvider({ children }) {
                     setTripDates(data.tripDates);
                     localStorage.setItem('cachedTripDates', JSON.stringify(data.tripDates));
                 }
+            }
+            if (isFirstLoad) {
+                setIsGlobalLoading(false);
+                isFirstLoad = false;
             }
         });
         return () => unsubscribe();
