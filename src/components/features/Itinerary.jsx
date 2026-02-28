@@ -65,16 +65,11 @@ export default function Itinerary() {
 
         let currentTime = parse(currentEvents[0].startTime || '09:00', 'HH:mm', new Date());
 
-        return currentEvents.map((event, index) => {
-            if (index === 0) {
-                // First event fixes the time
-                currentTime = addMinutes(currentTime, event.duration);
-                return { ...event, time: event.startTime || '09:00' };
-            } else {
-                const formattedTime = format(currentTime, 'HH:mm');
-                currentTime = addMinutes(currentTime, event.duration);
-                return { ...event, time: formattedTime };
-            }
+        return currentEvents.map((event) => {
+            const startTimeStr = format(currentTime, 'HH:mm');
+            currentTime = addMinutes(currentTime, event.duration);
+            const endTimeStr = format(currentTime, 'HH:mm');
+            return { ...event, time: startTimeStr, endTime: endTimeStr };
         });
     };
 
@@ -297,7 +292,7 @@ export default function Itinerary() {
                         </button>
 
                         <div style={{ marginBottom: '8px', color: 'var(--accent-color)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <FaClock /> {selectedEventDetails.time} (約 {selectedEventDetails.duration} 分)
+                            <FaClock /> {selectedEventDetails.time} - {selectedEventDetails.endTime} (約 {selectedEventDetails.duration} 分)
                         </div>
                         <h2 style={{ marginTop: 0, marginBottom: '20px', color: 'var(--text-primary)' }}>{selectedEventDetails.title}</h2>
 

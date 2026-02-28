@@ -196,7 +196,7 @@ export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
                                 {event.type === 'food' && <FaUtensils color="#38A169" />}
                                 {(event.type === 'activity' || !event.type) && <FaCamera color="var(--accent-color)" />}
                                 {event.type === 'accommodation' && <FaBed color="#D53F8C" />}
-                                <span style={{ color: 'var(--text-primary)' }}>{event.time}</span>
+                                <span style={{ color: 'var(--text-primary)' }}>{event.time} - {event.endTime}</span>
                             </div>
                             <span>{event.duration} min</span>
                         </div>
