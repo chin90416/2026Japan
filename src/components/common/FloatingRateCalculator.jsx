@@ -106,7 +106,7 @@ export default function FloatingRateCalculator() {
                             {result} <span style={{ fontSize: '16px' }}>{isJpyToTwd ? 'TWD' : 'JPY'}</span>
                         </div>
 
-                        <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-secondary)', padding: '8px', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
+                        <div style={{ textAlign: 'center', fontSize: '10px', color: 'var(--text-secondary)', padding: '6px', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
                             <span style={{ fontWeight: 'bold' }}>當前匯率：</span> 1 {isJpyToTwd ? 'JPY' : 'TWD'} ≈ {isJpyToTwd ? RATE_JPY_TO_TWD : RATE_TWD_TO_JPY.toFixed(4)} {isJpyToTwd ? 'TWD' : 'JPY'}
                         </div>
 
