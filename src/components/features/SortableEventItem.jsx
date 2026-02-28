@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { FaTrash, FaTrain, FaPlane, FaUtensils, FaCamera, FaBed, FaGripLines } from 'react-icons/fa';
+import { FaTrash, FaTrain, FaPlane, FaUtensils, FaCamera, FaBed, FaBars } from 'react-icons/fa';
 
 export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
     const {
@@ -213,20 +213,19 @@ export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
                                 <div
                                     {...attributes}
                                     {...listeners}
-                                    onPointerDown={(e) => e.stopPropagation()}
-                                    onTouchStart={(e) => e.stopPropagation()}
-                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onClick={(e) => e.stopPropagation()}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        padding: '4px',
+                                        padding: '12px',
+                                        marginRight: '-8px',
                                         cursor: 'grab',
                                         touchAction: 'none',
                                         color: '#cbd5e1'
                                     }}
                                 >
-                                    <FaGripLines size={20} />
+                                    <FaBars size={20} />
                                 </div>
                             </div>
                         </div>

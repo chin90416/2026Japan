@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaCloudSun, FaCloudRain, FaSun, FaMapMarkerAlt, FaMap, FaInfoCircle, FaTicketAlt, FaClock, FaTimes, FaExternalLinkAlt, FaStickyNote } from 'react-icons/fa';
+import { FaPlus, FaCloudSun, FaCloudRain, FaSun, FaMapMarkerAlt, FaMap, FaInfoCircle, FaTicketAlt, FaClock, FaTimes, FaExternalLinkAlt, FaStickyNote, FaEdit } from 'react-icons/fa';
 import {
     DndContext,
     closestCenter,
@@ -129,6 +129,8 @@ export default function Itinerary() {
         e.preventDefault();
         if (!newEvent.title) return;
 
+        const isEditing = !!newEvent.id;
+
         const eventData = {
             date: selectedDate,
             title: newEvent.title,
@@ -139,16 +141,20 @@ export default function Itinerary() {
             duration: parseInt(newEvent.duration) || 60,
             type: newEvent.type,
             extraInfo: newEvent.extraInfo,
-            startTime: '', // Time will be auto-calculated since it's added at the end
-            order: events.filter(ev => ev.date === selectedDate).length // Put at the end
+            startTime: newEvent.startTime || '', // Time will be auto-calculated since it's added at the end
+            order: isEditing ? newEvent.order : events.filter(ev => ev.date === selectedDate).length // Put at the end if new
         };
 
         // Reset and close right away for UX
         setNewEvent({ title: '', desc: '', location: '', bookingInfo: '', notes: '', duration: 60, type: 'activity', extraInfo: {} });
         setShowAddModal(false);
 
-        // Add to Firestore
-        await addItineraryEvent(eventData);
+        // Database operation
+        if (isEditing) {
+            await updateItineraryEvent(newEvent.id, eventData);
+        } else {
+            await addItineraryEvent(eventData);
+        }
     };
 
     // 強制全部顯示為晴天
@@ -283,12 +289,24 @@ export default function Itinerary() {
                         maxHeight: '80vh',
                         overflowY: 'auto'
                     }} onClick={e => e.stopPropagation()}>
-                        <button
-                            onClick={() => setSelectedEventDetails(null)}
-                            style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                        >
-                            <FaTimes size={20} />
-                        </button>
+                        <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px' }}>
+                            <button
+                                onClick={() => {
+                                    setNewEvent({ ...selectedEventDetails });
+                                    setSelectedEventDetails(null);
+                                    setShowAddModal(true);
+                                }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+                            >
+                                <FaEdit size={18} />
+                            </button>
+                            <button
+                                onClick={() => setSelectedEventDetails(null)}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+                            >
+                                <FaTimes size={20} />
+                            </button>
+                        </div>
 
                         <div style={{ marginBottom: '8px', color: 'var(--accent-color)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <FaClock /> {selectedEventDetails.time} - {selectedEventDetails.endTime} (約 {selectedEventDetails.duration} 分)
@@ -392,7 +410,7 @@ export default function Itinerary() {
                         overflowY: 'auto',
                         boxShadow: 'var(--shadow-md)'
                     }} onClick={e => e.stopPropagation()}>
-                        <h2 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-primary)' }}>新增行程</h2>
+                        <h2 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-primary)' }}>{newEvent.id ? '編輯行程' : '新增行程'}</h2>
 
                         <form onSubmit={handleAddSubmit}>
                             <div style={{ marginBottom: '12px' }}>
