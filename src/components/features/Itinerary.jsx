@@ -83,14 +83,13 @@ export default function Itinerary() {
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                // Must hold for 1 seconds (1000ms) to trigger drag
-                delay: 1000,
+                delay: 150,
                 tolerance: 5,
             },
         }),
         useSensor(TouchSensor, {
             activationConstraint: {
-                delay: 1000, // 1s long press on mobile
+                delay: 150, // 縮短全域拖曳延遲，因為改用實體把手
                 tolerance: 5,
             },
         }),

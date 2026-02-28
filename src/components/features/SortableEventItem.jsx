@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { FaTrash, FaTrain, FaPlane, FaUtensils, FaCamera, FaBed } from 'react-icons/fa';
+import { FaTrash, FaTrain, FaPlane, FaUtensils, FaCamera, FaBed, FaGripLines } from 'react-icons/fa';
 
 export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
     const {
@@ -125,10 +125,6 @@ export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
             <div
                 ref={setNodeRef}
                 style={style}
-                {...attributes}
-                // Spread the sortable listeners here. 
-                // We use DndContext with delay so quick taps/swipes won't trigger drag.
-                {...listeners}
             >
                 {/* Timeline Node */}
                 <div style={{
@@ -212,7 +208,27 @@ export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
                                 {event.type === 'accommodation' && <FaBed color="#D53F8C" />}
                                 <span style={{ color: 'var(--text-primary)' }}>{event.time} - {event.endTime}</span>
                             </div>
-                            <span>{event.duration} min</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span>{event.duration} min</span>
+                                <div
+                                    {...attributes}
+                                    {...listeners}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    onTouchStart={(e) => e.stopPropagation()}
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '4px',
+                                        cursor: 'grab',
+                                        touchAction: 'none',
+                                        color: '#cbd5e1'
+                                    }}
+                                >
+                                    <FaGripLines size={20} />
+                                </div>
+                            </div>
                         </div>
 
                         <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem' }}>{event.title}</h3>
