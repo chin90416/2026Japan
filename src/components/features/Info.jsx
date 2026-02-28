@@ -156,6 +156,33 @@ export default function Info() {
                             </div>
                         </div>
                     </button>
+
+                    {/* 強制重新整理並清除本機快取按鈕 */}
+                    <button
+                        onClick={() => {
+                            if (window.confirm('確定要強制重新整理並清除本機暫存？這將會重新下載雲端最新資料。')) {
+                                localStorage.removeItem('cachedExchangeRate');
+                                localStorage.removeItem('cachedTripDates');
+                                window.location.reload(true);
+                            }
+                        }}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#FEFCBF', // 黃色警告背景
+                            color: '#B7791F', // 深黃色文字
+                            padding: '16px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid #F6E05E',
+                            boxShadow: 'var(--shadow-sm)',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            marginTop: '8px'
+                        }}
+                    >
+                        強制重新整理與清除本機快取
+                    </button>
                 </div>
             </div>
 
