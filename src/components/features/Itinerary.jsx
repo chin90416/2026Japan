@@ -46,6 +46,8 @@ export default function Itinerary() {
     // 拿掉天氣模擬的 state
     // Modal state
     const [showAddModal, setShowAddModal] = useState(false);
+    const [selectedEventDetails, setSelectedEventDetails] = useState(null);
+    const [newEvent, setNewEvent] = useState({ title: '', desc: '', location: '', bookingInfo: '', notes: '', duration: 60, type: 'activity', extraInfo: {} });
     const [events, setEvents] = useState([]);
 
     // 訂閱 Firestore 行程資料
