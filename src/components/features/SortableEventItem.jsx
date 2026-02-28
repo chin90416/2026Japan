@@ -173,10 +173,10 @@ export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
                             padding: '16px',
                             borderRadius: 'var(--radius-md)',
                             boxShadow: 'var(--shadow-sm)',
-                            borderLeft: event.type === 'flight' ? '4px solid #F56565' :
-                                event.type === 'transport' ? '4px solid #4299E1' :
-                                    event.type === 'food' ? '4px solid #ED8936' :
-                                        event.type === 'accommodation' ? '4px solid #9F7AEA' :
+                            borderLeft: event.type === 'flight' ? '4px solid #805AD5' :
+                                event.type === 'transport' ? '4px solid #3182CE' :
+                                    event.type === 'food' ? '4px solid #38A169' :
+                                        event.type === 'accommodation' ? '4px solid #D53F8C' :
                                             '4px solid var(--accent-color)',
                             transform: `translateX(${swipeOffset}px)`,
                             transition: isSwiping ? 'none' : 'transform 0.2s ease-out',
@@ -191,11 +191,11 @@ export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
                     >
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 'bold', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                {event.type === 'flight' && <FaPlane color="#F56565" />}
-                                {event.type === 'transport' && <FaTrain color="#4299E1" />}
-                                {event.type === 'food' && <FaUtensils color="#ED8936" />}
+                                {event.type === 'flight' && <FaPlane color="#805AD5" />}
+                                {event.type === 'transport' && <FaTrain color="#3182CE" />}
+                                {event.type === 'food' && <FaUtensils color="#38A169" />}
                                 {(event.type === 'activity' || !event.type) && <FaCamera color="var(--accent-color)" />}
-                                {event.type === 'accommodation' && <FaBed color="#9F7AEA" />}
+                                {event.type === 'accommodation' && <FaBed color="#D53F8C" />}
                                 <span style={{ color: 'var(--text-primary)' }}>{event.time}</span>
                             </div>
                             <span>{event.duration} min</span>

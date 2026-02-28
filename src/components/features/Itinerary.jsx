@@ -315,7 +315,7 @@ export default function Itinerary() {
                         {selectedEventDetails.bookingInfo && (
                             <div style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f0f4f8', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '8px', color: '#334155' }}>
-                                    <FaTicketAlt color="#4299E1" /> 訂位 / 票券資訊
+                                    <FaTicketAlt color="#3182CE" /> 訂位 / 票券資訊
                                 </div>
                                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                                     {selectedEventDetails.bookingInfo}
@@ -326,7 +326,7 @@ export default function Itinerary() {
                         {selectedEventDetails.location && (
                             <div style={{ marginBottom: '20px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-primary)' }}>
-                                    <FaMapMarkerAlt color="#F56565" /> 地點資訊
+                                    <FaMapMarkerAlt color="#E53E3E" /> 地點資訊
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', padding: '12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
                                     <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', flex: 1 }}>{selectedEventDetails.location}</span>
@@ -349,7 +349,7 @@ export default function Itinerary() {
 
                         {/* Extra Info for Flight/Transport specific to details */}
                         {(selectedEventDetails.type === 'transport' || selectedEventDetails.type === 'flight') && selectedEventDetails.extraInfo && (
-                            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff', borderRadius: 'var(--radius-md)', border: `2px dashed ${selectedEventDetails.type === 'flight' ? '#F56565' : '#4299E1'}` }}>
+                            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff', borderRadius: 'var(--radius-md)', border: `2px dashed ${selectedEventDetails.type === 'flight' ? '#805AD5' : '#3182CE'}` }}>
                                 {selectedEventDetails.type === 'transport' && (
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <div><div style={{ fontSize: '0.8rem', color: '#64748b' }}>路線</div><strong>{selectedEventDetails.extraInfo.route || '---'}</strong></div>
