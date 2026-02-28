@@ -37,6 +37,7 @@ export function SortableEventItem({ id, event, onDelete, onClickDetail }) {
         position: 'relative',
         zIndex: isDragging ? 99 : 1,
         display: 'flex',
+        touchAction: 'none',
     };
 
     // Touch handlers for swipe to delete (Independent of DnD Kit which handles long-press drag)
