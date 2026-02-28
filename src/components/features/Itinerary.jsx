@@ -159,7 +159,7 @@ export default function Itinerary() {
 
     return (
         <div className="page-container">
-            <h1 className="page-title">旅程表</h1>
+            <h1 className="page-title">2026日本關西五日遊</h1>
 
             {/* Scrollable Date Menu */}
             <div style={{
