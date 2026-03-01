@@ -10,13 +10,13 @@ export default function BottomNav() {
         transform: 'translateX(-50%)',
         width: '100%',
         maxWidth: '600px', // 與 .container 一致
-        height: 'var(--bottom-nav-height)',
+        height: 'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px))',
         backgroundColor: 'var(--surface-color)',
         borderTop: '1px solid var(--border-color)',
         display: 'flex',
         justifyContent: 'space-around',
         alignItems: 'center',
-        paddingBottom: 'env(safe-area-inset-bottom, 20px)', // 適配 iPhone 底部 Home Indicator
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)', // 適配 iPhone 底部 Home Indicator
         zIndex: 1000,
         boxShadow: '0 -2px 10px rgba(0,0,0,0.05)'
     };

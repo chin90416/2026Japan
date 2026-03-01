@@ -73,7 +73,7 @@ select {
   max-width: 600px;
   /* Mobile-first container */
   margin: 0 auto;
-  padding-bottom: calc(var(--bottom-nav-height) + 20px);
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 20px);
   min-height: 100vh;
   position: relative;
   /* Ensure contents never break the viewport width */
