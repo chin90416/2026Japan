@@ -77,7 +77,7 @@ export default function FloatingRateCalculator() {
                 onClick={() => setIsOpen(true)}
                 style={{
                     position: 'fixed',
-                    bottom: 'calc(var(--bottom-nav-height) + 20px)',
+                    bottom: 'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 20px)',
                     left: '50%',
                     transform: `translateX(calc(min(300px, 50vw) - 20px - 56px)) ${isOpen ? 'scale(0)' : 'scale(1)'}`,
                     width: '56px',

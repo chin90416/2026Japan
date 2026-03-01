@@ -23,8 +23,8 @@
   --radius-lg: 12px;
 
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  --bottom-nav-height: 80px;
-  /* 從 60px 加大到 80px */
+  --bottom-nav-height: 72px;
+  /* 從 60px 加大到 72px，避免太高覆蓋按鈕 */
 }
 
 * {

@@ -364,7 +364,7 @@ export default function Expenses() {
                 onClick={() => setShowAddModal(true)}
                 style={{
                     position: 'fixed',
-                    bottom: 'calc(var(--bottom-nav-height) + 20px + 56px + 16px)', // 統一位於計算機正上方
+                    bottom: 'calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 20px + 56px + 16px)', // 統一位於計算機正上方
                     left: '50%',
                     transform: 'translateX(calc(min(300px, 50vw) - 20px - 56px))',
                     width: '56px',
