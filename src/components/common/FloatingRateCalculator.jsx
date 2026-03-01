@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { FaCalculator, FaTimes } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { useGlobal } from '../../contexts/GlobalContext';
 
 export default function FloatingRateCalculator() {
     const [isOpen, setIsOpen] = useState(false);
     const [amount, setAmount] = useState('');
     const [isJpyToTwd, setIsJpyToTwd] = useState(true); // Default JPY -> TWD
+    const navigate = useNavigate();
 
     const { exchangeRate } = useGlobal();
     const RATE_JPY_TO_TWD = exchangeRate;
@@ -31,7 +33,7 @@ export default function FloatingRateCalculator() {
     };
 
     const handleKeypad = (key) => {
-        if (key === 'C') {
+        if (key === 'AC') {
             setAmount('');
         } else if (key === '⌫') {
             setAmount(prev => prev.slice(0, -1));
@@ -42,9 +44,28 @@ export default function FloatingRateCalculator() {
             setAmount(prev => prev + '/');
         } else if (key === '×') {
             setAmount(prev => prev + '*');
+        } else if (key === '%') {
+            const result = evaluateMath(amount) / 100;
+            setAmount(result.toString());
         } else {
             setAmount(prev => prev + key);
         }
+    };
+
+    const handleNavigateToExpense = () => {
+        // Calculate the base value from the input expression
+        const baseValue = evaluateMath(amount);
+        const finalAmount = baseValue || 0;
+
+        // Pass the calculated amount and the SELECTED currency
+        navigate('/expenses', {
+            state: {
+                openAddModal: true,
+                amount: finalAmount.toString(),
+                currency: isJpyToTwd ? 'JPY' : 'TWD'
+            }
+        });
+        setIsOpen(false);
     };
 
     const result = handleCalculate(amount);
@@ -82,106 +103,130 @@ export default function FloatingRateCalculator() {
                     left: 0,
                     width: '100%',
                     height: '100%',
-                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    backgroundColor: 'rgba(0,0,0,0.7)',
                     zIndex: 2000,
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center'
                 }} onClick={() => setIsOpen(false)}>
                     <div style={{
-                        backgroundColor: 'white',
-                        borderRadius: 'var(--radius-lg)',
+                        backgroundColor: '#000000',
+                        borderRadius: '32px',
                         padding: '24px',
                         width: '90%',
-                        maxWidth: '320px',
-                        boxShadow: 'var(--shadow-md)'
+                        maxWidth: '350px',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
                     }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                            <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>匯率計算機</h3>
-                            <button onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><FaTimes size={20} /></button>
+                            <h3 style={{ margin: 0, color: 'white', fontSize: '18px', fontWeight: '500' }}>匯率計算機</h3>
+                            <button onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#A1A1A6' }}><FaTimes size={24} /></button>
                         </div>
 
                         {/* Top Section: Result and Rate */}
-                        <div style={{ textAlign: 'center', fontSize: '32px', fontWeight: 'bold', color: 'var(--accent-color)', marginBottom: '12px' }}>
-                            {result} <span style={{ fontSize: '16px' }}>{isJpyToTwd ? 'TWD' : 'JPY'}</span>
+                        <div style={{ textAlign: 'center', fontSize: '40px', fontWeight: '300', color: 'white', marginBottom: '8px', wordBreak: 'break-all' }}>
+                            {result} <span style={{ fontSize: '20px', color: '#A1A1A6' }}>{isJpyToTwd ? 'TWD' : 'JPY'}</span>
                         </div>
 
-                        <div style={{ textAlign: 'center', fontSize: '10px', color: 'var(--text-secondary)', padding: '6px', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
-                            <span style={{ fontWeight: 'bold' }}>當前匯率：</span> 1 {isJpyToTwd ? 'JPY' : 'TWD'} ≈ {isJpyToTwd ? RATE_JPY_TO_TWD : RATE_TWD_TO_JPY.toFixed(4)} {isJpyToTwd ? 'TWD' : 'JPY'}
+                        <div style={{ textAlign: 'center', fontSize: '12px', color: '#A1A1A6', padding: '6px', backgroundColor: '#1C1C1E', borderRadius: '12px', marginBottom: '16px' }}>
+                            <span style={{ fontWeight: '500' }}>當前匯率：</span> 1 {isJpyToTwd ? 'JPY' : 'TWD'} ≈ {isJpyToTwd ? RATE_JPY_TO_TWD : RATE_TWD_TO_JPY.toFixed(4)} {isJpyToTwd ? 'TWD' : 'JPY'}
                         </div>
 
                         {/* Input Field */}
                         <div style={{ marginBottom: '16px' }}>
-                            <label style={{ display: 'block', fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                                輸入金額 ({isJpyToTwd ? '日幣 JPY' : '台幣 TWD'})
-                            </label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                <label style={{ fontSize: '14px', color: '#A1A1A6' }}>
+                                    輸入金額 ({isJpyToTwd ? '日幣 JPY' : '台幣 TWD'})
+                                </label>
+                            </div>
                             <div style={{ position: 'relative' }}>
-                                <button
-                                    onClick={() => handleKeypad('⌫')}
-                                    style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '1.2rem', padding: '8px', cursor: 'pointer' }}>
-                                    ⌫
-                                </button>
                                 <input
                                     type="text"
                                     readOnly
                                     value={displayAmount}
-                                    style={{ width: '100%', fontSize: '24px', padding: '12px', paddingLeft: '48px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', outline: 'none', backgroundColor: '#f8fafc', textAlign: 'right' }}
+                                    style={{
+                                        width: '100%',
+                                        fontSize: '32px',
+                                        padding: '16px',
+                                        borderRadius: '16px',
+                                        border: 'none',
+                                        outline: 'none',
+                                        backgroundColor: '#1C1C1E',
+                                        color: 'white',
+                                        textAlign: 'right',
+                                        fontWeight: '300'
+                                    }}
                                     placeholder="0"
                                 />
                             </div>
                         </div>
 
                         {/* Currency Switcher */}
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', justifyContent: 'center' }}>
                             <button
                                 onClick={() => setIsJpyToTwd(true)}
                                 style={{
                                     flex: 1,
-                                    padding: '8px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    backgroundColor: isJpyToTwd ? 'var(--accent-color)' : '#f0f0f0',
-                                    color: isJpyToTwd ? 'white' : 'var(--text-primary)',
-                                    fontWeight: isJpyToTwd ? 'bold' : 'normal',
+                                    padding: '12px',
+                                    borderRadius: '16px',
+                                    backgroundColor: isJpyToTwd ? '#FF9F0A' : '#333333',
+                                    color: isJpyToTwd ? 'white' : '#A1A1A6',
+                                    fontWeight: isJpyToTwd ? '600' : '400',
+                                    fontSize: '16px',
                                     border: 'none',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
                                 }}
                             >
-                                日幣
+                                日幣 JPY
                             </button>
                             <button
                                 onClick={() => setIsJpyToTwd(false)}
                                 style={{
                                     flex: 1,
-                                    padding: '8px',
-                                    borderRadius: 'var(--radius-sm)',
-                                    backgroundColor: !isJpyToTwd ? 'var(--accent-color)' : '#f0f0f0',
-                                    color: !isJpyToTwd ? 'white' : 'var(--text-primary)',
-                                    fontWeight: !isJpyToTwd ? 'bold' : 'normal',
+                                    padding: '12px',
+                                    borderRadius: '16px',
+                                    backgroundColor: !isJpyToTwd ? '#FF9F0A' : '#333333',
+                                    color: !isJpyToTwd ? 'white' : '#A1A1A6',
+                                    fontWeight: !isJpyToTwd ? '600' : '400',
+                                    fontSize: '16px',
                                     border: 'none',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
                                 }}
                             >
-                                台幣
+                                台幣 TWD
                             </button>
                         </div>
 
-                        {/* Custom Keypad */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                            {['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '-', 'C', '0', '=', '+'].map(btn => (
+                        {/* iOS Style Custom Keypad */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                            {['AC', '⌫', '%', '÷', '7', '8', '9', '×', '4', '5', '6', '-', '1', '2', '3', '+', '記帳', '0', '.', '='].map(btn => (
                                 <button
                                     key={btn}
-                                    onClick={() => handleKeypad(btn)}
+                                    onClick={() => btn === '記帳' ? handleNavigateToExpense() : handleKeypad(btn)}
                                     style={{
-                                        padding: '12px 0',
-                                        fontSize: '1.2rem',
-                                        fontWeight: 'bold',
-                                        backgroundColor: ['÷', '×', '-', '+', '='].includes(btn) ? '#F6AD55' : btn === 'C' ? '#fee2e2' : 'white',
-                                        color: ['÷', '×', '-', '+', '='].includes(btn) ? 'white' : btn === 'C' ? '#ef4444' : 'var(--text-primary)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: 'var(--radius-sm)',
+                                        position: 'relative',
+                                        padding: btn === '記帳' ? '0' : '16px 0',
+                                        height: '64px', // Fixed height to make it circular
+                                        fontSize: btn === '記帳' ? '18px' : ['AC', '⌫', '%'].includes(btn) ? '24px' : '28px',
+                                        fontWeight: btn === '記帳' ? '600' : '400',
+                                        backgroundColor: ['÷', '×', '-', '+', '='].includes(btn)
+                                            ? '#FF9F0A' // Orange for operators
+                                            : ['AC', '⌫', '%'].includes(btn)
+                                                ? '#A5A5A5' // Light gray for top row
+                                                : '#333333', // Dark gray for numbers and actions
+                                        color: ['AC', '⌫', '%'].includes(btn) ? 'black' : 'white',
+                                        border: 'none',
+                                        borderRadius: '32px', // Fully rounded
                                         cursor: 'pointer',
-                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        transition: 'opacity 0.1s'
                                     }}
+                                    onMouseDown={(e) => e.currentTarget.style.opacity = '0.7'}
+                                    onMouseUp={(e) => e.currentTarget.style.opacity = '1'}
+                                    onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                                 >
                                     {btn}
                                 </button>

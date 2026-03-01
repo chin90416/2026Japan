@@ -1,23 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaPlus, FaUtensils, FaTrain, FaBed, FaShoppingBag, FaIcons, FaTimes, FaTicketAlt, FaCalendarAlt } from 'react-icons/fa';
 import { format } from 'date-fns';
+import { useLocation } from 'react-router-dom';
 import { SwipeToDeleteWrapper } from '../common/SwipeToDeleteWrapper';
 import { useGlobal } from '../../contexts/GlobalContext';
-import { subscribeToExpenses, addExpense, deleteExpense } from '../../services/db';
+import { subscribeToExpenses, addExpense, deleteExpense, updateExpense } from '../../services/db';
 
 export default function Expenses() {
     const [expenses, setExpenses] = useState([]);
+    const location = useLocation();
+
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newExpense, setNewExpense] = useState({ name: '', amount: '', category: 'food', currency: 'JPY' });
+
+    // 編輯用狀態
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editItemId, setEditItemId] = useState(null);
+    const [editExpense, setEditExpense] = useState({ name: '', amount: '', category: 'food', currency: 'JPY' });
+
+    // Handle auto-opening Add Modal from calculator
+    useEffect(() => {
+        if (location.state?.openAddModal) {
+            setShowAddModal(true);
+            setNewExpense(prev => ({
+                ...prev,
+                amount: location.state.amount || '',
+                currency: location.state.currency || 'JPY'
+            }));
+
+            // Clear the state so refreshing doesn't re-open the modal
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
 
     // 訂閱 Firestore 記帳紀錄
-    React.useEffect(() => {
+    useEffect(() => {
         const unsubscribe = subscribeToExpenses((data) => {
             setExpenses(data);
         });
         return () => unsubscribe();
     }, []);
-
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [newExpense, setNewExpense] = useState({ name: '', amount: '', category: 'food', currency: 'JPY' });
 
     const handleAddSubmit = async (e) => {
         e.preventDefault();
@@ -35,6 +57,39 @@ export default function Expenses() {
         setShowAddModal(false);
 
         await addExpense(expenseData);
+    };
+
+    const openEditModal = (expense) => {
+        setEditItemId(expense.id);
+        setEditExpense({
+            name: expense.name,
+            amount: expense.amount.toString(),
+            category: expense.category,
+            currency: expense.currency
+        });
+        setShowEditModal(true);
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        if (!editExpense.name || !editExpense.amount) return;
+
+        const updateData = {
+            name: editExpense.name,
+            amount: parseInt(editExpense.amount),
+            currency: editExpense.currency,
+            category: editExpense.category
+        };
+
+        setShowEditModal(false);
+
+        // Optimistic UI update
+        setExpenses(expenses.map(expense =>
+            expense.id === editItemId ? { ...expense, ...updateData } : expense
+        ));
+
+        // DB update
+        await updateExpense(editItemId, updateData);
     };
 
     const handleDelete = async (id) => {
@@ -256,14 +311,18 @@ export default function Expenses() {
                                             onDelete={() => handleDelete(expense.id)}
                                             itemName={expense.name}
                                         >
-                                            <div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                padding: '16px',
-                                                backgroundColor: 'white',
-                                                borderRadius: 'var(--radius-md)',
-                                                boxShadow: 'var(--shadow-sm)'
-                                            }}>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    padding: '16px',
+                                                    backgroundColor: 'white',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    boxShadow: 'var(--shadow-sm)',
+                                                    cursor: 'pointer' // 增加游標提示
+                                                }}
+                                                onClick={() => openEditModal(expense)}
+                                            >
                                                 <div style={{
                                                     width: '48px',
                                                     height: '48px',
@@ -408,6 +467,116 @@ export default function Expenses() {
                                 <button
                                     type="button"
                                     onClick={() => setShowAddModal(false)}
+                                    style={{ padding: '8px 16px', color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    type="submit"
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: '#F6AD55',
+                                        color: 'white',
+                                        borderRadius: 'var(--radius-sm)',
+                                        fontWeight: 'bold',
+                                        border: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    儲存
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Expense Modal */}
+            {showEditModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    zIndex: 2000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }} onClick={() => setShowEditModal(false)}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        padding: '24px',
+                        borderRadius: 'var(--radius-lg)',
+                        width: '90%',
+                        maxWidth: '400px',
+                        boxShadow: 'var(--shadow-md)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <h2 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-primary)' }}>編輯紀錄</h2>
+
+                        <form onSubmit={handleEditSubmit}>
+                            <div style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
+                                    分類
+                                </label>
+                                <select
+                                    value={editExpense.category}
+                                    onChange={e => setEditExpense({ ...editExpense, category: e.target.value })}
+                                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}
+                                >
+                                    <option value="food">飲食</option>
+                                    <option value="transport">交通</option>
+                                    <option value="accommodation">住宿</option>
+                                    <option value="shopping">購物</option>
+                                    <option value="ticket">票券</option>
+                                    <option value="other">其他</option>
+                                </select>
+                            </div>
+
+                            <div style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
+                                    項目名稱 *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={editExpense.name}
+                                    onChange={e => setEditExpense({ ...editExpense, name: e.target.value })}
+                                    style={{ width: '100%', padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ display: 'block', fontSize: '14px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
+                                    幣別與金額 *
+                                </label>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <select
+                                        value={editExpense.currency}
+                                        onChange={e => setEditExpense({ ...editExpense, currency: e.target.value })}
+                                        style={{ width: '100px', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}
+                                    >
+                                        <option value="JPY">日幣</option>
+                                        <option value="TWD">台幣</option>
+                                    </select>
+                                    <input
+                                        type="number"
+                                        value={editExpense.amount}
+                                        onChange={e => setEditExpense({ ...editExpense, amount: e.target.value })}
+                                        style={{ flex: 1, padding: '8px', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                                        required
+                                        min="1"
+                                        placeholder="輸入金額"
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEditModal(false)}
                                     style={{ padding: '8px 16px', color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
                                 >
                                     取消

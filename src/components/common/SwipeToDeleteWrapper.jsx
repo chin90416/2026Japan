@@ -4,71 +4,94 @@ import { FaTrash } from 'react-icons/fa';
 export function SwipeToDeleteWrapper({ children, onDelete, itemName = '此項目' }) {
     const [swipeOffset, setSwipeOffset] = useState(0);
     const [isSwiping, setIsSwiping] = useState(false);
-    const [startX, setStartX] = useState(0);
     const containerRef = useRef(null);
     const hasDragged = useRef(false);
+    const swipeOffsetRef = useRef(0);
+    const cleanupRefs = useRef(null);
     const [containerWidth, setContainerWidth] = useState(300);
 
     useEffect(() => {
         if (containerRef.current) {
             setContainerWidth(containerRef.current.offsetWidth);
         }
+        return () => {
+            if (cleanupRefs.current) {
+                cleanupRefs.current();
+            }
+        };
     }, [children]);
 
     const deleteThreshold = -(containerWidth / 3);
 
-    // Touch handlers for swipe to delete
-    const handleTouchStart = (e) => {
-        if (e.touches.length === 1) {
-            setStartX(e.touches[0].clientX);
-            setIsSwiping(true);
-            hasDragged.current = false;
-        }
-    };
+    const handlePointerDown = (e) => {
+        if (!e.isPrimary) return;
 
-    const handleTouchMove = (e) => {
-        if (!isSwiping) return;
-        const diff = e.touches[0].clientX - startX;
-        if (Math.abs(diff) > 5) {
-            hasDragged.current = true;
+        // Prevent native drag start to avoid conflicts with image dragging, etc.
+        if (e.target.tagName === 'IMG' || e.target.tagName === 'A') {
+            e.preventDefault();
         }
-        if (diff < 0) {
-            setSwipeOffset(Math.max(diff, -containerWidth));
-        } else {
-            setSwipeOffset(0);
-        }
-    };
 
-    const handleMouseDown = (e) => {
-        setStartX(e.clientX);
+        const startX = e.clientX;
         setIsSwiping(true);
         hasDragged.current = false;
-    };
+        swipeOffsetRef.current = 0;
 
-    const handleMouseMove = (e) => {
-        if (!isSwiping) return;
-        const diff = e.clientX - startX;
-        if (Math.abs(diff) > 5) {
-            hasDragged.current = true;
-        }
-        if (diff < 0) {
-            setSwipeOffset(Math.max(diff, -containerWidth));
-        } else {
-            setSwipeOffset(0);
-        }
-    };
-
-    const handleSwipeEnd = () => {
-        if (!isSwiping) return;
-        setIsSwiping(false);
-        if (swipeOffset <= deleteThreshold) {
-            // Trigger confirmation
-            if (window.confirm(`確定要刪除 "${itemName}" 嗎？`)) {
-                onDelete();
+        const handlePointerMove = (moveEvent) => {
+            const diff = moveEvent.clientX - startX;
+            if (Math.abs(diff) > 5) {
+                hasDragged.current = true;
             }
-        }
-        // Reset position smoothly
-        setSwipeOffset(0);
+            if (diff < 0) {
+                const currentWidth = containerRef.current ? containerRef.current.offsetWidth : containerWidth;
+                const newOffset = Math.max(diff, -currentWidth);
+                setSwipeOffset(newOffset);
+                swipeOffsetRef.current = newOffset;
+            } else {
+                setSwipeOffset(0);
+                swipeOffsetRef.current = 0;
+            }
+        };
+
+        const handlePointerUp = (upEvent) => {
+            setIsSwiping(false);
+            if (cleanupRefs.current) {
+                cleanupRefs.current();
+                cleanupRefs.current = null;
+            }
+
+            // Only trigger delete if it was a normal pointer up and not a cancel!
+            if (upEvent && upEvent.type !== 'pointercancel') {
+                const currentWidth = containerRef.current ? containerRef.current.offsetWidth : containerWidth;
+                const threshold = -(currentWidth / 3);
+
+                if (swipeOffsetRef.current <= threshold) {
+                    // Delay confirm slightly to let UI render and not block thread aggressively
+                    requestAnimationFrame(() => {
+                        setTimeout(() => {
+                            if (window.confirm(`確定要刪除 "${itemName}" 嗎？`)) {
+                                onDelete();
+                            }
+                        }, 10);
+                    });
+                }
+            }
+
+            setSwipeOffset(0);
+            swipeOffsetRef.current = 0;
+        };
+
+        // Attach global listeners
+        // This ensures tracking works even if the mouse leaves the original component boundary!
+        const cleanup = () => {
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', handlePointerUp);
+            window.removeEventListener('pointercancel', handlePointerUp);
+        };
+        cleanupRefs.current = cleanup;
+
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', handlePointerUp);
+        window.addEventListener('pointercancel', handlePointerUp);
     };
 
     return (
@@ -103,13 +126,8 @@ export function SwipeToDeleteWrapper({ children, onDelete, itemName = '此項目
             {/* Actual Content Wrapper */}
             <div
                 ref={containerRef}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleSwipeEnd}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleSwipeEnd}
-                onMouseLeave={handleSwipeEnd}
+                onPointerDown={handlePointerDown}
+                onDragStart={(e) => e.preventDefault()}
                 style={{
                     backgroundColor: 'white',
                     borderRadius: 'var(--radius-md)',
@@ -119,14 +137,14 @@ export function SwipeToDeleteWrapper({ children, onDelete, itemName = '此項目
                     position: 'relative',
                     zIndex: 1,
                     width: '100%',
-                    // Prevent text selection while dragging mouse
-                    userSelect: isSwiping ? 'none' : 'auto'
+                    userSelect: isSwiping ? 'none' : 'auto',
+                    touchAction: 'pan-y'
                 }}
             >
-                {/* 為了防止內部的 onClick 被滑動誤觸，套用透明 overlay (如果需要可加，這裡先倚賴 children 自行處理或使用 capture 攔截) */}
                 <div onClickCapture={(e) => {
-                    if (hasDragged.current || Math.abs(swipeOffset) > 5) {
+                    if (hasDragged.current) {
                         e.stopPropagation();
+                        e.preventDefault();
                     }
                 }}>
                     {children}

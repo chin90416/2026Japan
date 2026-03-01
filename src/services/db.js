@@ -90,6 +90,11 @@ export const addExpense = async (expenseData) => {
     return docRef.id;
 };
 
+export const updateExpense = async (id, updates) => {
+    const docRef = doc(db, "trips", MAIN_TRIP_ID, "expenses", id);
+    await updateDoc(docRef, updates);
+};
+
 export const deleteExpense = async (id) => {
     const docRef = doc(db, "trips", MAIN_TRIP_ID, "expenses", id);
     await deleteDoc(docRef);
