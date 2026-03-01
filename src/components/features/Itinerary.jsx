@@ -23,26 +23,25 @@ import { subscribeToItineraries, addItineraryEvent, updateItineraryEvent, delete
 export default function Itinerary() {
     const { tripDates } = useGlobal();
     const dates = tripDates || [];
-    const [selectedDate, setSelectedDate] = useState(dates[0]);
+
+    // 初始化時就立刻嘗試配對「今天」
+    const [selectedDate, setSelectedDate] = useState(() => {
+        if (!dates || dates.length === 0) return null;
+        const todayStr = format(new Date(), 'MM/dd');
+        const matchDate = dates.find(d => d.startsWith(todayStr));
+        return matchDate || dates[0];
+    });
 
     useEffect(() => {
         if (dates.length > 0) {
-            // 如果所選日期還在清單內，且不是初始情況，就不用亂跳
-            if (selectedDate && dates.includes(selectedDate)) {
-                return;
-            }
-
-            // 嘗試偵測系統今天日期 (MM/dd) 是否在行程內
-            const todayStr = format(new Date(), 'MM/dd');
-            const matchDate = dates.find(d => d.startsWith(todayStr));
-
-            if (matchDate) {
-                setSelectedDate(matchDate);
-            } else {
-                setSelectedDate(dates[0]);
+            // 如果目前沒有選取的日期，或是原本選的日期已經被刪除了，重新配對
+            if (!selectedDate || !dates.includes(selectedDate)) {
+                const todayStr = format(new Date(), 'MM/dd');
+                const matchDate = dates.find(d => d.startsWith(todayStr));
+                setSelectedDate(matchDate || dates[0]);
             }
         }
-    }, [dates]);
+    }, [dates, selectedDate]);
     // 拿掉天氣模擬的 state
     // Modal state
     const [showAddModal, setShowAddModal] = useState(false);
