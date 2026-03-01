@@ -248,7 +248,8 @@ export default function Itinerary() {
                 style={{
                     position: 'fixed',
                     bottom: 'calc(var(--bottom-nav-height) + 20px + 56px + 16px)', // Navigator height + safety margin + calculator height + space between
-                    right: '20px',
+                    left: '50%',
+                    transform: 'translateX(calc(min(300px, 50vw) - 20px - 56px))',
                     width: '56px',
                     height: '56px',
                     borderRadius: '50%',

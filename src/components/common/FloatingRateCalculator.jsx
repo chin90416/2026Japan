@@ -78,7 +78,8 @@ export default function FloatingRateCalculator() {
                 style={{
                     position: 'fixed',
                     bottom: 'calc(var(--bottom-nav-height) + 20px)',
-                    right: '20px',
+                    left: '50%',
+                    transform: `translateX(calc(min(300px, 50vw) - 20px - 56px)) ${isOpen ? 'scale(0)' : 'scale(1)'}`,
                     width: '56px',
                     height: '56px',
                     borderRadius: '50%',
@@ -89,8 +90,7 @@ export default function FloatingRateCalculator() {
                     alignItems: 'center',
                     boxShadow: 'var(--shadow-md)',
                     zIndex: 1000,
-                    transition: 'transform 0.2s',
-                    transform: isOpen ? 'scale(0)' : 'scale(1)'
+                    transition: 'transform 0.2s'
                 }}
             >
                 <FaCalculator size={24} />

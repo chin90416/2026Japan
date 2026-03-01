@@ -365,7 +365,8 @@ export default function Expenses() {
                 style={{
                     position: 'fixed',
                     bottom: 'calc(var(--bottom-nav-height) + 20px + 56px + 16px)', // 統一位於計算機正上方
-                    right: '20px',
+                    left: '50%',
+                    transform: 'translateX(calc(min(300px, 50vw) - 20px - 56px))',
                     width: '56px',
                     height: '56px',
                     borderRadius: '50%',

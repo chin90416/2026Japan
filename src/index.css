@@ -23,7 +23,8 @@
   --radius-lg: 12px;
 
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  --bottom-nav-height: 60px;
+  --bottom-nav-height: 80px;
+  /* 從 60px 加大到 80px */
 }
 
 * {
