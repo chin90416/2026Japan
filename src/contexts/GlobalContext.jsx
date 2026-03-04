@@ -1,0 +1,103 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { addDays, format } from 'date-fns';
+import { subscribeToTripSettings, updateTripSettings } from '../services/db';
+
+const GlobalContext = createContext();
+
+export function useGlobal() {
+    return useContext(GlobalContext);
+}
+
+export function GlobalProvider({ children }) {
+    // 初始化時，優先從 localStorage 撈取先前的快取，達到瞬間載入
+    const [isGlobalLoading, setIsGlobalLoading] = useState(true); // 預設為 true，等待首次讀取完成
+
+    const [exchangeRate, setExchangeRate] = useState(() => {
+        const cached = localStorage.getItem('cachedExchangeRate');
+        return cached ? parseFloat(cached) : 0.21;
+    });
+
+    const [tripDates, setTripDates] = useState(() => {
+        const cached = localStorage.getItem('cachedTripDates');
+        if (cached) {
+            try { return JSON.parse(cached); } catch (e) { }
+        }
+        return [
+            '10/25 (Day 1)',
+            '10/26 (Day 2)',
+            '10/27 (Day 3)',
+            '10/28 (Day 4)',
+            '10/29 (Day 5)'
+        ];
+    });
+
+    // 啟動時訂閱 Firestore
+    useEffect(() => {
+        let isFirstLoad = true;
+        const unsubscribe = subscribeToTripSettings((data) => {
+            if (data) {
+                if (data.exchangeRate) {
+                    setExchangeRate(data.exchangeRate);
+                    localStorage.setItem('cachedExchangeRate', data.exchangeRate.toString());
+                }
+                if (data.tripDates && data.tripDates.length > 0) {
+                    setTripDates(data.tripDates);
+                    localStorage.setItem('cachedTripDates', JSON.stringify(data.tripDates));
+                }
+            }
+            if (isFirstLoad) {
+                setIsGlobalLoading(false);
+                isFirstLoad = false;
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // 提供給 Info.jsx 呼叫修改雲端匯率的 method
+    const changeExchangeRate = async (rate) => {
+        try {
+            setExchangeRate(rate); // 樂觀更新 (Optimistic UI) 
+            await updateTripSettings({ exchangeRate: rate });
+        } catch (error) {
+            console.error("更新匯率失敗", error);
+            alert("儲存匯率失敗！請檢查 Firebase Firestore 權限規則設定：\n" + error.message);
+        }
+    };
+
+    // 輔助函式：根據起始日期（YYYY-MM-DD）與天數生成日期陣列
+    const generateTripDates = async (startDateString, daysCount) => {
+        try {
+            const [year, month, day] = startDateString.split('-');
+            if (!year || !month || !day) return;
+            const startDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10));
+
+            const newDates = [];
+            for (let i = 0; i < daysCount; i++) {
+                const currentDate = addDays(startDate, i);
+                newDates.push(`${format(currentDate, 'MM/dd')} (Day ${i + 1})`);
+            }
+            if (newDates.length > 0) {
+                setTripDates(newDates); // 樂觀更新
+                await updateTripSettings({ tripDates: newDates }); // 寫回雲端
+            }
+        } catch (error) {
+            console.error("更新日期失敗", error);
+            alert("儲存日期失敗！請檢查 Firebase Firestore 權限規則：\n" + error.message);
+        }
+    };
+
+    const value = {
+        exchangeRate,
+        setExchangeRate: changeExchangeRate,
+        tripDates,
+        setTripDates,
+        generateTripDates,
+        isGlobalLoading
+    };
+
+    return (
+        <GlobalContext.Provider value={value}>
+            {children}
+        </GlobalContext.Provider>
+    );
+}

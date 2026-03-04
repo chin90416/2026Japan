@@ -1,0 +1,117 @@
+:root {
+  /* Warm Color Palette */
+  --bg-color: #FAF6F0;
+  /* 柔和米色 */
+  --surface-color: #FFFFFF;
+  --text-primary: #4A3B32;
+  /* 大地深褐色 */
+  --text-secondary: #8C7A6B;
+  /* 低飽和度淺褐 */
+  --accent-color: #E76F51;
+  /* 珊瑚紅/粉橘 */
+  --accent-hover: #D95B3D;
+  --border-color: #E8DED1;
+  /* 暖色調編框 */
+  --success-color: #8AB07D;
+  /* 柔和綠 */
+  --danger-color: #E07A5F;
+  --shadow-sm: 0 2px 8px rgba(74, 59, 50, 0.05);
+  /* 帶一點暖色的陰影 */
+  --shadow-md: 0 4px 12px rgba(74, 59, 50, 0.08);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --bottom-nav-height: 72px;
+  /* 從 60px 加大到 72px，避免太高覆蓋按鈕 */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  font-size: 16px;
+  font: -apple-system-body;
+  font-family: var(--font-family);
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* Prevent horizontal scroll entirely */
+  overflow-x: clip;
+  /* changed from hidden to support sticky children */
+  width: 100vw;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  /* Avoid zooming in on iOS when focusing inputs */
+  font-size: 16px;
+}
+
+.container {
+  width: 100%;
+  max-width: 600px;
+  /* Mobile-first container */
+  margin: 0 auto;
+  padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 20px);
+  min-height: 100vh;
+  position: relative;
+  /* Ensure contents never break the viewport width */
+  overflow-x: clip;
+  /* changed from hidden to allow sticky children */
+}
+
+.page-container {
+  padding: 16px;
+  padding-bottom: 0;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: var(--accent-color);
+}
+
+/* Timeline current time dot blinking animation */
+@keyframes blink {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 0 12px rgba(246, 173, 85, 1);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.blinking-progress-dot {
+  animation: blink 2s ease-in-out infinite;
+}
