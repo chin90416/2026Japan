@@ -26,3 +26,5 @@ dist-ssr
 
 # Firebase Rules
 firestore.rules
+storage.rules
+
