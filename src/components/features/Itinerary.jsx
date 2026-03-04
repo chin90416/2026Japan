@@ -424,21 +424,20 @@ export default function Itinerary() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-primary)' }}>
                                     <FaMapMarkerAlt color="#E53E3E" /> 地點資訊
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', padding: '12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', flex: 1 }}>{selectedEventDetails.location}</span>
+                                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: '#EBF8FF' }}>
                                     <a
                                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedEventDetails.location)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{
-                                            display: 'flex', alignItems: 'center', gap: '6px',
-                                            backgroundColor: '#EBF8FF', color: '#3182CE',
-                                            padding: '8px 12px', borderRadius: '20px',
-                                            textDecoration: 'none', fontWeight: 'bold', fontSize: '0.85rem', flexShrink: 0
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                            color: '#3182CE', width: '100%',
+                                            textDecoration: 'none', fontWeight: 'bold', fontSize: '1rem'
                                         }}
                                     >
-                                        <FaMap /> 導航
+                                        <FaMap /> 開啟 Google Maps 導航
                                     </a>
+
                                 </div>
                             </div>
                         )}
