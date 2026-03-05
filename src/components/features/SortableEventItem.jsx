@@ -337,7 +337,16 @@ export function SortableEventItem({ id, event, onDelete, onClickDetail, currentT
                             </div>
                         ) : null}
 
-                        {event.notes && <p style={{ margin: (event.type === 'transport' || event.type === 'flight') ? '8px 0 0 0' : 0, color: 'var(--text-secondary)', fontSize: '0.9rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{event.notes}</p>}
+                        {event.notes && (
+                            <p style={{
+                                margin: (event.type === 'transport' || event.type === 'flight') ? '8px 0 0 0' : 0,
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.9rem',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                            }}>{event.notes.split('\n')[0]}</p>
+                        )}
                     </div>
                 </div>
             </div>

@@ -402,7 +402,7 @@ export default function Itinerary() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-primary)' }}>
                                     <FaStickyNote color="var(--accent-color)" /> 注意事項 / 備註
                                 </div>
-                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                     {selectedEventDetails.notes || selectedEventDetails.desc}
                                 </p>
                             </div>

@@ -44,3 +44,16 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
+// 註冊 Service Worker 以實現圖片本地快取
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    // 配合 Vite base 設定，路徑需要加上 /2026Japan/
+    navigator.serviceWorker.register('/2026Japan/sw.js')
+      .then((registration) => {
+        console.log('ServiceWorker 註冊成功，範圍：', registration.scope);
+      })
+      .catch((error) => {
+        console.log('ServiceWorker 註冊失敗：', error);
+      });
+  });
+}
