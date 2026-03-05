@@ -10,6 +10,7 @@ const Itinerary = React.lazy(() => import('./components/features/Itinerary'));
 const Expenses = React.lazy(() => import('./components/features/Expenses'));
 const Shopping = React.lazy(() => import('./components/features/Shopping'));
 const Info = React.lazy(() => import('./components/features/Info'));
+const SubwayMap = React.lazy(() => import('./components/features/SubwayMap'));
 
 // 封裝 Suspense 載入中的畫面
 function LoadingSpinner() {
@@ -51,6 +52,7 @@ function AppContent() {
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/shopping" element={<Shopping />} />
             <Route path="/info" element={<Info />} />
+            <Route path="/map/:type" element={<SubwayMap />} />
           </Routes>
         </React.Suspense>
 

@@ -89,6 +89,78 @@ export default function Info() {
                 </div>
             </div>
 
+            {/* 路線圖按鈕區塊 */}
+            <div style={{ marginTop: '32px' }}>
+                <h2 style={{ fontSize: '1.2rem', marginBottom: '16px', color: 'var(--text-primary)' }}>交通路線圖</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <button
+                        onClick={() => window.location.hash = '/map/jr'}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: 'white',
+                            padding: '20px 12px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-color)',
+                            boxShadow: 'var(--shadow-sm)',
+                            cursor: 'pointer',
+                            gap: '12px'
+                        }}
+                    >
+                        <div style={{
+                            backgroundColor: '#E6FFFA',
+                            color: '#319795',
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1.2rem',
+                            fontWeight: 'bold'
+                        }}>
+                            JR
+                        </div>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.9rem' }}>JR 西日本</span>
+                    </button>
+
+                    <button
+                        onClick={() => window.location.hash = '/map/metro'}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: 'white',
+                            padding: '20px 12px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-color)',
+                            boxShadow: 'var(--shadow-sm)',
+                            cursor: 'pointer',
+                            gap: '12px'
+                        }}
+                    >
+                        <div style={{
+                            backgroundColor: '#FFF5F5',
+                            color: '#E53E3E',
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1.2rem',
+                            fontWeight: 'bold'
+                        }}>
+                            M
+                        </div>
+                        <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', fontSize: '0.9rem' }}>Osaka Metro</span>
+                    </button>
+                </div>
+            </div>
+
             {/* 系統設定間隔與標題 */}
             <div style={{
                 marginTop: '32px',
