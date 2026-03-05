@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft } from 'react-icons/fa';
+import { FaArrowLeft, FaSearchPlus, FaSearchMinus } from 'react-icons/fa';
 
 // 這裡我們預設圖檔會被放在 src/assets/maps/
 import jrWestMap from '../../assets/maps/jr_west.png';
@@ -20,6 +20,7 @@ const maps = {
 export default function SubwayMap() {
     const { type } = useParams();
     const navigate = useNavigate();
+    const [isZoomed, setIsZoomed] = useState(false);
     const mapData = maps[type];
 
     if (!mapData) {
@@ -44,12 +45,14 @@ export default function SubwayMap() {
         );
     }
 
+    const toggleZoom = () => setIsZoomed(!isZoomed);
+
     return (
         <div style={{
             height: '100vh',
             display: 'flex',
             flexDirection: 'column',
-            backgroundColor: '#f8f9fa',
+            backgroundColor: '#1a1a1a', // 深色背景更能襯托地圖
             position: 'fixed',
             top: 0,
             left: '50%',
@@ -63,64 +66,115 @@ export default function SubwayMap() {
                 padding: '16px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '16px',
+                justifyContent: 'space-between',
                 backgroundColor: 'white',
                 borderBottom: '1px solid var(--border-color)',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                zIndex: 10
             }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <button
+                        onClick={() => navigate('/info')}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            color: 'var(--text-primary)'
+                        }}
+                    >
+                        <FaArrowLeft size={20} />
+                    </button>
+                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{mapData.title}</h2>
+                </div>
+
                 <button
-                    onClick={() => navigate('/info')}
+                    onClick={toggleZoom}
                     style={{
-                        background: 'none',
+                        backgroundColor: 'var(--accent-color)',
+                        color: 'white',
                         border: 'none',
-                        padding: '8px',
+                        padding: '8px 12px',
+                        borderRadius: '20px',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: 'var(--text-primary)'
+                        gap: '6px',
+                        fontSize: '0.85rem',
+                        fontWeight: 'bold',
+                        cursor: 'pointer'
                     }}
                 >
-                    <FaArrowLeft size={20} />
+                    {isZoomed ? <><FaSearchMinus /> 縮小</> : <><FaSearchPlus /> 放大</>}
                 </button>
-                <h2 style={{ margin: 0, fontSize: '1.2rem' }}>{mapData.title}</h2>
             </div>
 
             {/* Map Viewer Container */}
-            <div style={{
-                flex: 1,
-                overflow: 'auto',
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'flex-start',
-                padding: '10px',
-                WebkitOverflowScrolling: 'touch' // iOS 平滑捲動
-            }}>
+            <div
+                style={{
+                    flex: 1,
+                    overflow: isZoomed ? 'auto' : 'hidden',
+                    display: 'flex',
+                    alignItems: isZoomed ? 'flex-start' : 'center',
+                    justifyContent: isZoomed ? 'flex-start' : 'center',
+                    backgroundColor: '#1a1a1a',
+                    WebkitOverflowScrolling: 'touch',
+                    cursor: isZoomed ? 'grab' : 'zoom-in'
+                }}
+                onClick={() => !isZoomed && setIsZoomed(true)}
+            >
                 <img
                     src={mapData.src}
                     alt={mapData.title}
-                    style={{
-                        maxWidth: 'none', // 允許圖片超出容器以便捲動查看細節
+                    style={isZoomed ? {
+                        maxWidth: 'none',
+                        display: 'block',
+                        cursor: 'zoom-out'
+                    } : {
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        objectFit: 'contain',
                         display: 'block'
+                    }}
+                    onError={(e) => {
+                        e.target.style.display = 'none';
+                        const parent = e.target.parentElement;
+                        const errorMsg = document.createElement('div');
+                        errorMsg.style.padding = '40px 20px';
+                        errorMsg.style.textAlign = 'center';
+                        errorMsg.style.color = '#fff';
+                        errorMsg.innerHTML = `
+                            <p style="font-weight: bold; font-size: 1.1rem; color: #ff8080;">⚠️ 無法載入圖檔</p>
+                            <p style="font-size: 0.9rem; color: #ccc; margin-top: 8px;">
+                                請確認 <b>src/assets/maps/${type === 'jr' ? 'jr_west.png' : 'osaka_metro.png'}</b> 是否已放置正確的圖檔。
+                            </p>
+                        `;
+                        parent.appendChild(errorMsg);
                     }}
                 />
             </div>
 
             {/* 提示訊息 */}
-            <div style={{
-                position: 'absolute',
-                bottom: '20px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: 'rgba(0,0,0,0.6)',
-                color: 'white',
-                padding: '8px 16px',
-                borderRadius: '20px',
-                fontSize: '0.8rem',
-                pointerEvents: 'none'
-            }}>
-                可自由滑動查看細節
-            </div>
+            {!isZoomed && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: '30px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    color: 'white',
+                    padding: '10px 20px',
+                    borderRadius: '24px',
+                    fontSize: '0.9rem',
+                    pointerEvents: 'none',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    zIndex: 20
+                }}>
+                    點擊地圖或按鈕放大查看細節
+                </div>
+            )}
         </div>
     );
 }
