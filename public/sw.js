@@ -41,8 +41,9 @@ self.addEventListener('fetch', (event) => {
 
                     // 2. 如果沒有快取，發送原始網路請求
                     return fetch(event.request).then((networkResponse) => {
-                        // 如果請求失敗，或者不是 200 OK 的回應，就不要快取
-                        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && networkResponse.type !== 'cors') {
+                        // Firebase Storage 跨域圖片的 response.type 可能是 'opaque'，此時 status 會是 0
+                        // 確保我們接收 basic, cors 或 opaque 類型的正確回應
+                        if (!networkResponse || (networkResponse.status !== 200 && networkResponse.type !== 'opaque')) {
                             return networkResponse;
                         }
 
@@ -54,7 +55,8 @@ self.addEventListener('fetch', (event) => {
                         return networkResponse;
                     }).catch(err => {
                         // 離線且無快取的情況
-                        console.error('Fetch error:', err);
+                        console.log('Fetch error (offline):', err);
+                        // 可以考慮這裡加上 fallback 的圖片
                         throw err;
                     });
                 });

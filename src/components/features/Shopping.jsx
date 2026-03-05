@@ -157,6 +157,10 @@ export default function Shopping() {
     };
 
     const handleDelete = async (id) => {
+        if (!window.confirm("確定要刪除這個項目嗎？")) {
+            return;
+        }
+
         const targetItem = items.find(item => item.id === id);
         if (targetItem && targetItem.imageUrl) {
             // Delete image from storage if it exists
