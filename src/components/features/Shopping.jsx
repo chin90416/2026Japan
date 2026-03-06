@@ -10,16 +10,33 @@ import { FaImage, FaCamera, FaCameraRetro } from 'react-icons/fa';
 export default function Shopping() {
     const [activeTab, setActiveTab] = useState('souvenir');
     const [items, setItems] = useState([]);
+    const [pendingWrites, setPendingWrites] = useState({}); // 用於追蹤正在寫入 Firestore 的項目
+
 
     // 訂閱 Firestore 清單紀錄
     React.useEffect(() => {
         const unsubscribe = subscribeToPackingList((data) => {
-            // 手動排序以確保穩定，由新到舊或由舊到新
-            const sorted = [...data].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            setItems(sorted);
+            // 手動排序以確保穩定，由舊到新
+            setItems(data);
         });
         return () => unsubscribe();
     }, []);
+
+    // 合併伺服器資料與本地正在寫入的資料 (排除閃爍)
+    const displayItems = React.useMemo(() => {
+        // 先建立一個以 ID 為鍵的對照表
+        const itemMap = {};
+        items.forEach(item => { itemMap[item.id] = item; });
+
+        // 將正在寫入的項目覆蓋或新增進去
+        Object.values(pendingWrites).forEach(pendingItem => {
+            itemMap[pendingItem.id] = { ...itemMap[pendingItem.id], ...pendingItem };
+        });
+
+        // 轉回陣列並進行最終排序
+        return Object.values(itemMap).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    }, [items, pendingWrites]);
+
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [newItemText, setNewItemText] = useState('');
@@ -77,6 +94,9 @@ export default function Shopping() {
             timestamp: Date.now()
         };
 
+        // 樂觀更新：立即加入 pendingWrites
+        setPendingWrites(prev => ({ ...prev, [tempId]: { id: tempId, ...itemData } }));
+
         if (activeTab === 'souvenir') {
             itemData.remark = newRemarkText.trim();
             itemData.quantity = newItemQuantity.toString().trim() || '1';
@@ -87,32 +107,49 @@ export default function Shopping() {
                     const fileName = `souvenirs/${uuidv4()}_${tempCroppedFile.name}`;
                     const url = await uploadImage(tempCroppedFile, fileName);
                     itemData.imageUrl = url;
+                    // 更新 pending 狀態中的圖片網址
+                    setPendingWrites(prev => ({ ...prev, [tempId]: { ...prev[tempId], imageUrl: url } }));
                 } catch (error) {
                     console.error("Upload failed", error);
-                    alert("上傳圖片失敗，將僅儲存文字資訊。");
+                    alert("上傳圖片失敗，請檢查網路連線或稍後再試。");
+                    setPendingWrites(prev => {
+                        const next = { ...prev };
+                        delete next[tempId];
+                        return next;
+                    });
+                    setIsUploading(false);
+                    return;
                 } finally {
                     setIsUploading(false);
                 }
             }
         }
 
-        // Optimistic UI update
-        const optimisticItem = { id: tempId, ...itemData };
-        setItems(prev => [optimisticItem, ...prev]);
-
+        setShowAddModal(false);
         setNewItemText('');
         setNewRemarkText('');
         setNewItemQuantity('1');
         setTempCroppedFile(null);
         setTempCroppedPreview(null);
-        setShowAddModal(false);
 
         try {
             await addPackingItem(itemData);
+            // 寫入成功後，雖然伺服器會推播新資料，但我們暫時保留 pendingWrites 直到伺服器推播到位 (這由 memo 邏輯處理)
+            // 為了簡化，我們在一段時間後移除 pending 標記，或靠 ID 重複覆蓋
+            setTimeout(() => {
+                setPendingWrites(prev => {
+                    const next = { ...prev };
+                    delete next[tempId];
+                    return next;
+                });
+            }, 3000); // 3秒後移除過期的 pending 狀態
         } catch (error) {
             console.error("Failed to add item", error);
-            // Rollback optimistic update
-            setItems(prev => prev.filter(item => item.id !== tempId));
+            setPendingWrites(prev => {
+                const next = { ...prev };
+                delete next[tempId];
+                return next;
+            });
             alert("新增項目失敗，請稍後再試。");
         }
     };
@@ -168,11 +205,29 @@ export default function Shopping() {
 
         setShowEditModal(false);
 
-        // Optimistic UI update
-        setItems(items.map(item => item.id === editItemId ? { ...item, ...updateData } : item));
+        // 樂觀更新：加入 pendingWrites
+        setPendingWrites(prev => ({ ...prev, [editItemId]: { ...targetItem, ...updateData } }));
+        setShowEditModal(false);
 
         // DB update
-        await updatePackingItem(editItemId, updateData);
+        try {
+            await updatePackingItem(editItemId, updateData);
+            setTimeout(() => {
+                setPendingWrites(prev => {
+                    const next = { ...prev };
+                    delete next[editItemId];
+                    return next;
+                });
+            }, 3000);
+        } catch (error) {
+            console.error("Failed to update item", error);
+            setPendingWrites(prev => {
+                const next = { ...prev };
+                delete next[editItemId];
+                return next;
+            });
+            alert("更新失敗，請稍後再試。");
+        }
     };
 
     const handleDelete = async (id) => {
@@ -186,24 +241,62 @@ export default function Shopping() {
             await deleteImage(targetItem.imageUrl);
         }
 
-        setItems(items.filter(item => item.id !== id)); // Optimistic update
-        await deletePackingItem(id);
+        // 樂觀更新：在本地標記為刪除 (隱藏)
+        setPendingWrites(prev => ({ ...prev, [id]: { id, hidden: true } }));
+
+        try {
+            await deletePackingItem(id);
+            setTimeout(() => {
+                setPendingWrites(prev => {
+                    const next = { ...prev };
+                    delete next[id];
+                    return next;
+                });
+            }, 3000);
+        } catch (error) {
+            console.error("Failed to delete", error);
+            setPendingWrites(prev => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
+            alert("刪除失敗，請稍後再試。");
+        }
     };
 
     const toggleItem = async (id) => {
         const targetItem = items.find(item => item.id === id);
         if (!targetItem) return;
 
-        // Optimistic UI update
-        setItems(items.map(item =>
-            item.id === id ? { ...item, checked: !item.checked } : item
-        ));
+        // 樂觀更新
+        const newChecked = !targetItem.checked;
+        setPendingWrites(prev => ({
+            ...prev,
+            [id]: { ...targetItem, checked: newChecked }
+        }));
 
         // DB update
-        await updatePackingItem(id, { checked: !targetItem.checked });
+        try {
+            await updatePackingItem(id, { checked: newChecked });
+            setTimeout(() => {
+                setPendingWrites(prev => {
+                    const next = { ...prev };
+                    delete next[id];
+                    return next;
+                });
+            }, 2000);
+        } catch (error) {
+            console.error("Failed to toggle item", error);
+            setPendingWrites(prev => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
+        }
     };
 
-    const currentItems = items.filter(item => {
+    const currentItems = displayItems.filter(item => {
+        if (item.hidden) return false;
         // Handle legacy data: items without 'type' default to 'packing'
         const itemType = item.type || 'packing';
         return itemType === activeTab;

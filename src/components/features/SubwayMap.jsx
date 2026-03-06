@@ -59,7 +59,6 @@ export default function SubwayMap() {
                 const ch = containerRef.current.clientHeight;
                 setContainerSize({ width: cw, height: ch });
 
-                // 如果已經有圖片大小，則重新計算縮放
                 if (imageSize.width > 0) {
                     resetMap(cw, ch, imageSize.width, imageSize.height);
                 }
@@ -123,43 +122,6 @@ export default function SubwayMap() {
     const handleTouchEnd = () => {
         touchState.current.isPinching = false;
         touchState.current.isPanning = false;
-    };
-
-    // Mini-map calculations
-    const MINI_MAP_WIDTH = 120;
-    const miniMapScale = imageSize.width ? MINI_MAP_WIDTH / imageSize.width : 0;
-    const miniMapHeight = imageSize.height * miniMapScale;
-
-    // Viewport relative to image coordinates
-    const visibleWidth = containerSize.width / scale;
-    const visibleHeight = containerSize.height / scale;
-
-    // centerX/Y index into original image coordinates
-    const centerX = (containerSize.width / 2 - offset.x) / scale;
-    const centerY = (containerSize.height / 2 - offset.y) / scale;
-
-    const viewportRect = {
-        left: (centerX - visibleWidth / 2) * miniMapScale,
-        top: (centerY - visibleHeight / 2) * miniMapScale,
-        width: visibleWidth * miniMapScale,
-        height: visibleHeight * miniMapScale
-    };
-
-    // Unified pointer interaction for MiniMap (Android/iOS)
-    const handleMiniMapPointer = (e) => {
-        if (e.buttons !== 1 && e.type !== 'pointerdown') return;
-
-        const miniMapRect = e.currentTarget.getBoundingClientRect();
-        const clickX = e.clientX - miniMapRect.left;
-        const clickY = e.clientY - miniMapRect.top;
-
-        const targetImageX = clickX / miniMapScale;
-        const targetImageY = clickY / miniMapScale;
-
-        setOffset({
-            x: containerSize.width / 2 - targetImageX * scale,
-            y: containerSize.height / 2 - targetImageY * scale
-        });
     };
 
     if (!mapData) {
@@ -237,41 +199,6 @@ export default function SubwayMap() {
                         transition: touchState.current.isPinching || touchState.current.isPanning ? 'none' : 'transform 0.2s ease-out'
                     }}
                 />
-            </div>
-
-            {/* Mini Map */}
-            <div
-                onPointerDown={handleMiniMapPointer}
-                onPointerMove={handleMiniMapPointer}
-                style={{
-                    position: 'absolute',
-                    bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
-                    right: '16px',
-                    width: MINI_MAP_WIDTH,
-                    height: miniMapHeight,
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    borderRadius: '4px',
-                    backgroundImage: `url(${mapData.src})`,
-                    backgroundSize: 'cover',
-                    zIndex: 200,
-                    overflow: 'hidden',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                    touchAction: 'none'
-                }}
-            >
-                {/* Viewport Indicator */}
-                <div style={{
-                    position: 'absolute',
-                    border: '1px solid var(--accent-color)',
-                    backgroundColor: 'rgba(231, 111, 81, 0.2)',
-                    left: viewportRect.left,
-                    top: viewportRect.top,
-                    width: viewportRect.width,
-                    height: viewportRect.height,
-                    pointerEvents: 'none',
-                    transition: touchState.current.isPinching || touchState.current.isPanning ? 'none' : 'all 0.1s linear'
-                }} />
             </div>
 
             {/* Instruction Overlay */}
