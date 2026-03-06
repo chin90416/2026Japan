@@ -94,37 +94,27 @@ export default function Shopping() {
             timestamp: Date.now()
         };
 
-        // 樂觀更新：立即加入 pendingWrites
-        setPendingWrites(prev => ({ ...prev, [tempId]: { id: tempId, ...itemData } }));
-
         if (activeTab === 'souvenir') {
             itemData.remark = newRemarkText.trim();
             itemData.quantity = newItemQuantity.toString().trim() || '1';
-
-            if (tempCroppedFile) {
-                setIsUploading(true);
-                try {
-                    const fileName = `souvenirs/${uuidv4()}_${tempCroppedFile.name}`;
-                    const url = await uploadImage(tempCroppedFile, fileName);
-                    itemData.imageUrl = url;
-                    // 更新 pending 狀態中的圖片網址
-                    setPendingWrites(prev => ({ ...prev, [tempId]: { ...prev[tempId], imageUrl: url } }));
-                } catch (error) {
-                    console.error("Upload failed", error);
-                    alert("上傳圖片失敗，請檢查網路連線或稍後再試。");
-                    setPendingWrites(prev => {
-                        const next = { ...prev };
-                        delete next[tempId];
-                        return next;
-                    });
-                    setIsUploading(false);
-                    return;
-                } finally {
-                    setIsUploading(false);
-                }
-            }
         }
 
+        // 儲存需要非同步上傳的檔案與本機預覽網址
+        const fileToUpload = tempCroppedFile;
+        const previewUrl = tempCroppedPreview;
+
+        // 樂觀更新：立刻將帶有預覽圖的項目放到 pendingWrites，並標示是否正在上傳 (鎖定 UI)
+        setPendingWrites(prev => ({
+            ...prev,
+            [tempId]: {
+                id: tempId,
+                ...itemData,
+                imageUrl: previewUrl || itemData.imageUrl,
+                isUploading: !!fileToUpload
+            }
+        }));
+
+        // 極速關閉 Modal：不等待網路，先讓使用者看到畫面更新
         setShowAddModal(false);
         setNewItemText('');
         setNewRemarkText('');
@@ -132,26 +122,55 @@ export default function Shopping() {
         setTempCroppedFile(null);
         setTempCroppedPreview(null);
 
-        try {
-            await addPackingItem(itemData);
-            // 寫入成功後，雖然伺服器會推播新資料，但我們暫時保留 pendingWrites 直到伺服器推播到位 (這由 memo 邏輯處理)
-            // 為了簡化，我們在一段時間後移除 pending 標記，或靠 ID 重複覆蓋
-            setTimeout(() => {
+        // 背景非同步處理上傳與寫入資料庫
+        (async () => {
+            let finalImageUrl = null;
+            if (activeTab === 'souvenir' && fileToUpload) {
+                try {
+                    const fileName = `souvenirs/${uuidv4()}_${fileToUpload.name}`;
+                    finalImageUrl = await uploadImage(fileToUpload, fileName);
+                    itemData.imageUrl = finalImageUrl;
+                } catch (error) {
+                    console.error("Upload failed", error);
+                    alert("上傳圖片失敗，請檢查網路連線或稍後再試。");
+                    // 發生錯誤，移除 pending 項目
+                    setPendingWrites(prev => {
+                        const next = { ...prev };
+                        delete next[tempId];
+                        return next;
+                    });
+                    return; // 中止後續寫入
+                }
+            }
+
+            try {
+                // 若有上傳圖片，先解除圖片上的載入遮罩並換上正式網址
+                if (finalImageUrl) {
+                    setPendingWrites(prev => ({
+                        ...prev,
+                        [tempId]: { ...prev[tempId], imageUrl: finalImageUrl, isUploading: false }
+                    }));
+                }
+
+                await addPackingItem(itemData);
+                // 等待防火牆或其它推播回來後再移除 pending（保留幾秒避免閃爍）
+                setTimeout(() => {
+                    setPendingWrites(prev => {
+                        const next = { ...prev };
+                        delete next[tempId];
+                        return next;
+                    });
+                }, 3000);
+            } catch (error) {
+                console.error("Failed to add item", error);
                 setPendingWrites(prev => {
                     const next = { ...prev };
                     delete next[tempId];
                     return next;
                 });
-            }, 3000); // 3秒後移除過期的 pending 狀態
-        } catch (error) {
-            console.error("Failed to add item", error);
-            setPendingWrites(prev => {
-                const next = { ...prev };
-                delete next[tempId];
-                return next;
-            });
-            alert("新增項目失敗，請稍後再試。");
-        }
+                alert("新增項目失敗，請稍後再試。");
+            }
+        })();
     };
 
     const openEditModal = (item) => {
@@ -181,53 +200,80 @@ export default function Shopping() {
         if (editItemType === 'souvenir') {
             updateData.remark = editItemRemark.trim();
             updateData.quantity = editItemQuantity.toString().trim() || '1';
+        }
 
-            if (tempCroppedFile) {
-                setIsUploading(true);
+        // 保存更新用的參數，避免在非同步流程中被清空
+        const currentEditItemId = editItemId;
+        const fileToUpload = tempCroppedFile;
+        const previewUrl = tempCroppedPreview;
+        const oldImageUrl = targetItem.imageUrl;
+
+        // 立即關閉 Modal，停止阻擋畫面
+        setShowEditModal(false);
+
+        // 樂觀更新：立刻套用預覽圖，並標示上傳中
+        setPendingWrites(prev => ({
+            ...prev,
+            [currentEditItemId]: {
+                ...targetItem,
+                ...updateData,
+                imageUrl: previewUrl || targetItem.imageUrl,
+                isUploading: !!fileToUpload
+            }
+        }));
+
+        // 背景非同步處理更新
+        (async () => {
+            let finalImageUrl = null;
+            if (editItemType === 'souvenir' && fileToUpload) {
                 try {
                     // Upload new image
-                    const fileName = `souvenirs/${uuidv4()}_${tempCroppedFile.name}`;
-                    const url = await uploadImage(tempCroppedFile, fileName);
-                    updateData.imageUrl = url;
+                    const fileName = `souvenirs/${uuidv4()}_${fileToUpload.name}`;
+                    finalImageUrl = await uploadImage(fileToUpload, fileName);
+                    updateData.imageUrl = finalImageUrl;
 
-                    // If there was an old image, delete it to save space
-                    if (targetItem.imageUrl && targetItem.imageUrl !== url) {
-                        await deleteImage(targetItem.imageUrl);
+                    // 若舊圖存在，清理舊圖
+                    if (oldImageUrl && oldImageUrl !== finalImageUrl) {
+                        try { await deleteImage(oldImageUrl); } catch (e) { console.warn("Delete old image failed", e); }
                     }
                 } catch (error) {
                     console.error("Upload failed", error);
                     alert("更新圖片失敗，將保留原有圖片。");
-                } finally {
-                    setIsUploading(false);
+                    // 發生錯誤，恢復卡片為非上傳狀態與原本的圖片 (但保留可能更新的文字)
+                    setPendingWrites(prev => ({
+                        ...prev,
+                        [currentEditItemId]: { ...prev[currentEditItemId], imageUrl: oldImageUrl, isUploading: false }
+                    }));
                 }
             }
-        }
 
-        setShowEditModal(false);
+            // 無論圖片是否上傳成功，都會寫入資料庫確保文字已更新
+            try {
+                if (finalImageUrl) {
+                    setPendingWrites(prev => ({
+                        ...prev,
+                        [currentEditItemId]: { ...prev[currentEditItemId], imageUrl: finalImageUrl, isUploading: false }
+                    }));
+                }
 
-        // 樂觀更新：加入 pendingWrites
-        setPendingWrites(prev => ({ ...prev, [editItemId]: { ...targetItem, ...updateData } }));
-        setShowEditModal(false);
-
-        // DB update
-        try {
-            await updatePackingItem(editItemId, updateData);
-            setTimeout(() => {
+                await updatePackingItem(currentEditItemId, updateData);
+                setTimeout(() => {
+                    setPendingWrites(prev => {
+                        const next = { ...prev };
+                        delete next[currentEditItemId];
+                        return next;
+                    });
+                }, 3000);
+            } catch (error) {
+                console.error("Failed to update item", error);
                 setPendingWrites(prev => {
                     const next = { ...prev };
-                    delete next[editItemId];
+                    delete next[currentEditItemId];
                     return next;
                 });
-            }, 3000);
-        } catch (error) {
-            console.error("Failed to update item", error);
-            setPendingWrites(prev => {
-                const next = { ...prev };
-                delete next[editItemId];
-                return next;
-            });
-            alert("更新失敗，請稍後再試。");
-        }
+                alert("更新失敗，請稍後再試。");
+            }
+        })();
     };
 
     const handleDelete = async (id) => {
@@ -394,16 +440,31 @@ export default function Shopping() {
                                 )}
 
                                 {/* Delete button top left */}
-                                <div
-                                    onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                                    style={{
-                                        position: 'absolute', top: '4px', left: '4px', padding: '6px',
-                                        backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: '50%',
-                                        zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center'
-                                    }}
-                                >
-                                    <FaTrash size={12} color="#E53E3E" />
-                                </div>
+                                {!item.isUploading && (
+                                    <div
+                                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                                        style={{
+                                            position: 'absolute', top: '4px', left: '4px', padding: '6px',
+                                            backgroundColor: 'rgba(255,255,255,0.7)', borderRadius: '50%',
+                                            zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center'
+                                        }}
+                                    >
+                                        <FaTrash size={12} color="#E53E3E" />
+                                    </div>
+                                )}
+
+                                {/* Uploading Overlay (Spinner) */}
+                                {item.isUploading && (
+                                    <div style={{
+                                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                                        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+                                        backdropFilter: 'blur(2px)',
+                                        display: 'flex', justifyContent: 'center', alignItems: 'center',
+                                        zIndex: 20
+                                    }}>
+                                        <div className="spinner" style={{ width: '36px', height: '36px', border: '4px solid rgba(0,0,0,0.1)', borderTopColor: 'var(--accent-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+                                    </div>
+                                )}
 
                                 {/* Overlay gradient for text readability */}
                                 <div style={{
@@ -441,17 +502,19 @@ export default function Shopping() {
                                 </div>
 
                                 {/* Interaction Layer */}
-                                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
-                                    {/* Top Left Edit Area - Cover most of image */}
-                                    <div style={{ flex: 1 }} onClick={() => setSelectedSouvenir(item)} />
-                                    {/* Top Right Toggle Area - 40x40 touch target */}
-                                    <div
-                                        onClick={(e) => { e.stopPropagation(); toggleItem(item.id); }}
-                                        style={{ position: 'absolute', top: '4px', right: '4px', padding: '4px', zIndex: 10, backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}
-                                    >
-                                        <FaRegCircle size={22} color="var(--text-secondary)" />
+                                {!item.isUploading && (
+                                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
+                                        {/* Top Left Edit Area - Cover most of image */}
+                                        <div style={{ flex: 1 }} onClick={() => setSelectedSouvenir(item)} />
+                                        {/* Top Right Toggle Area - 40x40 touch target */}
+                                        <div
+                                            onClick={(e) => { e.stopPropagation(); toggleItem(item.id); }}
+                                            style={{ position: 'absolute', top: '4px', right: '4px', padding: '4px', zIndex: 10, backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: '50%' }}
+                                        >
+                                            <FaRegCircle size={22} color="var(--text-secondary)" />
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         ))}
                     </div>
