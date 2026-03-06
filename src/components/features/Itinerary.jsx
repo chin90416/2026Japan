@@ -92,10 +92,14 @@ export default function Itinerary() {
     };
 
     // Filter events for the selected date
-    const currentDayEvents = events.filter(e => e.date === selectedDate);
+    const currentDayEvents = React.useMemo(() =>
+        events.filter(e => e.date === selectedDate),
+        [events, selectedDate]);
 
     // Derived state for display
-    const displayedEvents = calculateTimes(currentDayEvents);
+    const displayedEvents = React.useMemo(() =>
+        calculateTimes(currentDayEvents),
+        [currentDayEvents]);
 
     const handleDelete = async (id) => {
         // Optimistic UI update

@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { FaCalendarAlt, FaMoneyBillWave, FaShoppingBag, FaInfoCircle } from 'react-icons/fa';
+import { preloadComponents } from '../../App';
 
 export default function BottomNav() {
     const navStyle = {
@@ -39,19 +40,31 @@ export default function BottomNav() {
 
     return (
         <nav style={navStyle}>
-            <NavLink to="/" style={linkStyle}>
+            <NavLink to="/" style={linkStyle}
+                onMouseEnter={preloadComponents.itinerary}
+                onTouchStart={preloadComponents.itinerary}
+            >
                 <FaCalendarAlt size={iconSize} />
                 <span>行程</span>
             </NavLink>
-            <NavLink to="/shopping" style={linkStyle}>
+            <NavLink to="/shopping" style={linkStyle}
+                onMouseEnter={preloadComponents.shopping}
+                onTouchStart={preloadComponents.shopping}
+            >
                 <FaShoppingBag size={iconSize} />
                 <span>清單</span>
             </NavLink>
-            <NavLink to="/expenses" style={linkStyle}>
+            <NavLink to="/expenses" style={linkStyle}
+                onMouseEnter={preloadComponents.expenses}
+                onTouchStart={preloadComponents.expenses}
+            >
                 <FaMoneyBillWave size={iconSize} />
                 <span>記帳</span>
             </NavLink>
-            <NavLink to="/info" style={linkStyle}>
+            <NavLink to="/info" style={linkStyle}
+                onMouseEnter={preloadComponents.info}
+                onTouchStart={preloadComponents.info}
+            >
                 <FaInfoCircle size={iconSize} />
                 <span>資訊</span>
             </NavLink>

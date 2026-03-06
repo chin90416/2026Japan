@@ -109,20 +109,34 @@ export const subscribeToPackingList = (callback) => {
     return onSnapshot(q, (snapshot) => {
         const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         callback(items);
+    }, (error) => {
+        console.error("Snapshot error for packing list:", error);
+        // If there's an index error or similar, try falling back to un-ordered query
+        if (error.code === 'failed-precondition') {
+            onSnapshot(getPackingColRef(), (snap) => {
+                const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Manual sort if no index
+                items.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                callback(items);
+            });
+        }
     });
 };
 
 export const addPackingItem = async (itemData) => {
     const docRef = await addDoc(getPackingColRef(), {
         ...itemData,
-        timestamp: Date.now()
+        timestamp: itemData.timestamp || Date.now()
     });
     return docRef.id;
 };
 
 export const updatePackingItem = async (id, updates) => {
     const docRef = doc(db, "trips", MAIN_TRIP_ID, "packing_list", id);
-    await updateDoc(docRef, updates);
+    await updateDoc(docRef, {
+        ...updates,
+        timestamp: updates.timestamp || Date.now()
+    });
 };
 
 export const deletePackingItem = async (id) => {

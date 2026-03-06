@@ -86,14 +86,14 @@ export function GlobalProvider({ children }) {
         }
     };
 
-    const value = {
+    const value = React.useMemo(() => ({
         exchangeRate,
         setExchangeRate: changeExchangeRate,
         tripDates,
         setTripDates,
         generateTripDates,
         isGlobalLoading
-    };
+    }), [exchangeRate, tripDates, isGlobalLoading]);
 
     return (
         <GlobalContext.Provider value={value}>

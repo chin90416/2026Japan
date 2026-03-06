@@ -67,10 +67,12 @@ export default function Shopping() {
         e.preventDefault();
         if (!newItemText.trim()) return;
 
+        const tempId = `temp-${uuidv4()}`;
         const itemData = {
             text: newItemText.trim(),
             checked: false,
-            type: activeTab
+            type: activeTab,
+            timestamp: Date.now()
         };
 
         if (activeTab === 'souvenir') {
@@ -92,6 +94,10 @@ export default function Shopping() {
             }
         }
 
+        // Optimistic UI update
+        const optimisticItem = { id: tempId, ...itemData };
+        setItems(prev => [optimisticItem, ...prev]);
+
         setNewItemText('');
         setNewRemarkText('');
         setNewItemQuantity('1');
@@ -99,7 +105,14 @@ export default function Shopping() {
         setTempCroppedPreview(null);
         setShowAddModal(false);
 
-        await addPackingItem(itemData);
+        try {
+            await addPackingItem(itemData);
+        } catch (error) {
+            console.error("Failed to add item", error);
+            // Rollback optimistic update
+            setItems(prev => prev.filter(item => item.id !== tempId));
+            alert("新增項目失敗，請稍後再試。");
+        }
     };
 
     const openEditModal = (item) => {
@@ -118,8 +131,12 @@ export default function Shopping() {
         e.preventDefault();
         if (!editItemText.trim()) return;
 
+        const targetItem = items.find(item => item.id === editItemId);
+        if (!targetItem) return;
+
         const updateData = {
             text: editItemText.trim(),
+            timestamp: Date.now() // Ensure it has a timestamp for ordering
         };
 
         if (editItemType === 'souvenir') {
@@ -184,7 +201,11 @@ export default function Shopping() {
         await updatePackingItem(id, { checked: !targetItem.checked });
     };
 
-    const currentItems = items.filter(item => item.type === activeTab);
+    const currentItems = items.filter(item => {
+        // Handle legacy data: items without 'type' default to 'packing'
+        const itemType = item.type || 'packing';
+        return itemType === activeTab;
+    });
     const pendingItems = currentItems.filter(item => !item.checked);
     const completedItems = currentItems.filter(item => item.checked);
 

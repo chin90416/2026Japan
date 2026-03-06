@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { FaExchangeAlt, FaCalendarAlt, FaTimes } from 'react-icons/fa';
 import { useGlobal } from '../../contexts/GlobalContext';
+import { db } from '../../firebase';
+import { terminate, clearIndexedDbPersistence } from 'firebase/firestore';
 
 export default function Info() {
     const { exchangeRate, setExchangeRate, tripDates, generateTripDates } = useGlobal();
@@ -231,11 +233,23 @@ export default function Info() {
 
                     {/* 強制重新整理並清除本機快取按鈕 */}
                     <button
-                        onClick={() => {
-                            if (window.confirm('確定要強制重新整理並清除本機暫存？這將會重新下載雲端最新資料。')) {
-                                localStorage.removeItem('cachedExchangeRate');
-                                localStorage.removeItem('cachedTripDates');
-                                window.location.reload(true);
+                        onClick={async () => {
+                            if (window.confirm('確定要強制重新整理並清除本機暫存？這將會重新下載雲端最新資料並清除 Firestore 快取。')) {
+                                try {
+                                    // 清除 localStorage
+                                    localStorage.removeItem('cachedExchangeRate');
+                                    localStorage.removeItem('cachedTripDates');
+
+                                    // 嘗試清除 Firestore Persistence
+                                    await terminate(db).catch(() => { });
+                                    await clearIndexedDbPersistence(db).catch(() => { });
+
+                                    // 重新整理
+                                    window.location.reload();
+                                } catch (e) {
+                                    console.error("Clear cache failed", e);
+                                    window.location.reload();
+                                }
                             }
                         }}
                         style={{

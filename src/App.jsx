@@ -12,6 +12,14 @@ const Shopping = React.lazy(() => import('./components/features/Shopping'));
 const Info = React.lazy(() => import('./components/features/Info'));
 const SubwayMap = React.lazy(() => import('./components/features/SubwayMap'));
 
+// 預載入機制
+export const preloadComponents = {
+  itinerary: () => import('./components/features/Itinerary'),
+  expenses: () => import('./components/features/Expenses'),
+  shopping: () => import('./components/features/Shopping'),
+  info: () => import('./components/features/Info')
+};
+
 // 封裝 Suspense 載入中的畫面
 function LoadingSpinner() {
   return (

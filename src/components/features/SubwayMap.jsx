@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaSearchPlus, FaSearchMinus } from 'react-icons/fa';
+import { FaArrowLeft, FaSearchPlus, FaSearchMinus, FaCompressArrowsAlt } from 'react-icons/fa';
 
-// 這裡我們預設圖檔會被放在 src/assets/maps/
 import jrWestMap from '../../assets/maps/jr_west.png';
 import osakaMetroMap from '../../assets/maps/osaka_metro.png';
 
@@ -20,46 +19,158 @@ const maps = {
 export default function SubwayMap() {
     const { type } = useParams();
     const navigate = useNavigate();
-    const [isZoomed, setIsZoomed] = useState(false);
     const mapData = maps[type];
+
+    // Zoom & Pan State
+    const [scale, setScale] = useState(1);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+    const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+
+    const containerRef = useRef(null);
+    const imgRef = useRef(null);
+    const touchState = useRef({
+        lastDistance: 0,
+        lastX: 0,
+        lastY: 0,
+        isPinching: false,
+        isPanning: false
+    });
+
+    // Update container size on mount/resize
+    useEffect(() => {
+        const updateSize = () => {
+            if (containerRef.current) {
+                setContainerSize({
+                    width: containerRef.current.clientWidth,
+                    height: containerRef.current.clientHeight
+                });
+            }
+        };
+        updateSize();
+        window.addEventListener('resize', updateSize);
+        return () => window.removeEventListener('resize', updateSize);
+    }, []);
+
+    const handleImageLoad = (e) => {
+        setImageSize({
+            width: e.target.naturalWidth,
+            height: e.target.naturalHeight
+        });
+        resetMap();
+    };
+
+    const resetMap = useCallback(() => {
+        setScale(1);
+        setOffset({ x: 0, y: 0 });
+    }, []);
+
+    // Gesture Handlers
+    const handleTouchStart = (e) => {
+        if (e.touches.length === 2) {
+            touchState.current.isPinching = true;
+            touchState.current.isPanning = false;
+            const dist = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+            touchState.current.lastDistance = dist;
+        } else if (e.touches.length === 1) {
+            touchState.current.isPanning = true;
+            touchState.current.isPinching = false;
+            touchState.current.lastX = e.touches[0].pageX;
+            touchState.current.lastY = e.touches[0].pageY;
+        }
+    };
+
+    const handleTouchMove = (e) => {
+        if (touchState.current.isPinching && e.touches.length === 2) {
+            e.preventDefault();
+            const dist = Math.hypot(
+                e.touches[0].pageX - e.touches[1].pageX,
+                e.touches[0].pageY - e.touches[1].pageY
+            );
+            const delta = dist / touchState.current.lastDistance;
+            setScale(prev => Math.min(Math.max(prev * delta, 0.5), 5));
+            touchState.current.lastDistance = dist;
+        } else if (touchState.current.isPanning && e.touches.length === 1) {
+            const dx = e.touches[0].pageX - touchState.current.lastX;
+            const dy = e.touches[0].pageY - touchState.current.lastY;
+            setOffset(prev => ({
+                x: prev.x + dx,
+                y: prev.y + dy
+            }));
+            touchState.current.lastX = e.touches[0].pageX;
+            touchState.current.lastY = e.touches[0].pageY;
+        }
+    };
+
+    const handleTouchEnd = () => {
+        touchState.current.isPinching = false;
+        touchState.current.isPanning = false;
+    };
+
+    // Mini-map calculations
+    const MINI_MAP_WIDTH = 120;
+    const miniMapScale = imageSize.width ? MINI_MAP_WIDTH / imageSize.width : 0;
+    const miniMapHeight = imageSize.height * miniMapScale;
+
+    // Viewport relative to image
+    const visibleWidth = containerSize.width / scale;
+    const visibleHeight = containerSize.height / scale;
+
+    // Offset is tracked in screen pixels, need to convert to image space
+    // Center is (containerSize.width / 2, containerSize.height / 2)
+    const centerX = (containerSize.width / 2 - offset.x) / scale;
+    const centerY = (containerSize.height / 2 - offset.y) / scale;
+
+    const viewportRect = {
+        left: (centerX - visibleWidth / 2) * miniMapScale,
+        top: (centerY - visibleHeight / 2) * miniMapScale,
+        width: visibleWidth * miniMapScale,
+        height: visibleHeight * miniMapScale
+    };
+
+    const handleMiniMapClick = (e) => {
+        const miniMapRect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - miniMapRect.left;
+        const clickY = e.clientY - miniMapRect.top;
+
+        const targetImageX = clickX / miniMapScale;
+        const targetImageY = clickY / miniMapScale;
+
+        setOffset({
+            x: containerSize.width / 2 - targetImageX * scale,
+            y: containerSize.height / 2 - targetImageY * scale
+        });
+    };
 
     if (!mapData) {
         return (
             <div className="page-container" style={{ textAlign: 'center', paddingTop: '100px' }}>
                 <h2>找不到路線圖</h2>
-                <button
-                    onClick={() => navigate('/info')}
-                    style={{
-                        marginTop: '20px',
-                        padding: '10px 20px',
-                        backgroundColor: 'var(--accent-color)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '20px',
-                        fontWeight: 'bold'
-                    }}
-                >
+                <button onClick={() => navigate('/info')} style={{ marginTop: '20px', padding: '10px 20px', backgroundColor: 'var(--accent-color)', color: 'white', border: 'none', borderRadius: '20px', fontWeight: 'bold' }}>
                     返回資訊頁面
                 </button>
             </div>
         );
     }
 
-    const toggleZoom = () => setIsZoomed(!isZoomed);
-
     return (
         <div style={{
             height: '100vh',
             display: 'flex',
             flexDirection: 'column',
-            backgroundColor: '#1a1a1a', // 深色背景更能襯托地圖
+            backgroundColor: '#111',
             position: 'fixed',
             top: 0,
             left: '50%',
             transform: 'translateX(-50%)',
             width: '100%',
             maxWidth: '600px',
-            zIndex: 2000
+            zIndex: 2000,
+            overflow: 'hidden',
+            touchAction: 'none'
         }}>
             {/* Header */}
             <div style={{
@@ -68,111 +179,98 @@ export default function SubwayMap() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 backgroundColor: 'white',
-                borderBottom: '1px solid var(--border-color)',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                zIndex: 10
+                zIndex: 100
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button
-                        onClick={() => navigate('/info')}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            color: 'var(--text-primary)'
-                        }}
-                    >
-                        <FaArrowLeft size={20} />
-                    </button>
-                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 'bold' }}>{mapData.title}</h2>
+                    <button onClick={() => navigate('/info')} style={{ padding: '8px', display: 'flex' }}><FaArrowLeft size={20} /></button>
+                    <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 'bold' }}>{mapData.title}</h2>
                 </div>
-
-                <button
-                    onClick={toggleZoom}
-                    style={{
-                        backgroundColor: 'var(--accent-color)',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 12px',
-                        borderRadius: '20px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        fontSize: '0.85rem',
-                        fontWeight: 'bold',
-                        cursor: 'pointer'
-                    }}
-                >
-                    {isZoomed ? <><FaSearchMinus /> 縮小</> : <><FaSearchPlus /> 放大</>}
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => setScale(prev => Math.min(prev + 0.5, 5))} style={{ padding: '8px', color: 'var(--accent-color)' }}><FaSearchPlus size={20} /></button>
+                    <button onClick={() => setScale(prev => Math.max(prev - 0.5, 0.5))} style={{ padding: '8px', color: 'var(--accent-color)' }}><FaSearchMinus size={20} /></button>
+                    <button onClick={resetMap} style={{ padding: '8px', color: 'var(--text-secondary)' }}><FaCompressArrowsAlt size={20} /></button>
+                </div>
             </div>
 
-            {/* Map Viewer Container */}
+            {/* Map Canvas */}
             <div
+                ref={containerRef}
                 style={{
                     flex: 1,
-                    overflow: isZoomed ? 'auto' : 'hidden',
-                    display: 'flex',
-                    alignItems: isZoomed ? 'flex-start' : 'center',
-                    justifyContent: isZoomed ? 'flex-start' : 'center',
-                    backgroundColor: '#1a1a1a',
-                    WebkitOverflowScrolling: 'touch',
-                    cursor: isZoomed ? 'grab' : 'zoom-in'
+                    position: 'relative',
+                    overflow: 'hidden',
+                    cursor: scale > 1 ? 'grab' : 'default'
                 }}
-                onClick={() => !isZoomed && setIsZoomed(true)}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
             >
                 <img
+                    ref={imgRef}
                     src={mapData.src}
                     alt={mapData.title}
-                    style={isZoomed ? {
+                    onLoad={handleImageLoad}
+                    style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transformOrigin: '0 0',
+                        transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale}) translate(-50%, -50%)`,
                         maxWidth: 'none',
-                        display: 'block',
-                        cursor: 'zoom-out'
-                    } : {
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                        objectFit: 'contain',
-                        display: 'block'
-                    }}
-                    onError={(e) => {
-                        e.target.style.display = 'none';
-                        const parent = e.target.parentElement;
-                        const errorMsg = document.createElement('div');
-                        errorMsg.style.padding = '40px 20px';
-                        errorMsg.style.textAlign = 'center';
-                        errorMsg.style.color = '#fff';
-                        errorMsg.innerHTML = `
-                            <p style="font-weight: bold; font-size: 1.1rem; color: #ff8080;">⚠️ 無法載入圖檔</p>
-                            <p style="font-size: 0.9rem; color: #ccc; margin-top: 8px;">
-                                請確認 <b>src/assets/maps/${type === 'jr' ? 'jr_west.png' : 'osaka_metro.png'}</b> 是否已放置正確的圖檔。
-                            </p>
-                        `;
-                        parent.appendChild(errorMsg);
+                        transition: touchState.current.isPinching || touchState.current.isPanning ? 'none' : 'transform 0.2s ease-out'
                     }}
                 />
             </div>
 
-            {/* 提示訊息 */}
-            {!isZoomed && (
+            {/* Mini Map */}
+            <div
+                onClick={handleMiniMapClick}
+                style={{
+                    position: 'absolute',
+                    bottom: '24px',
+                    right: '24px',
+                    width: MINI_MAP_WIDTH,
+                    height: miniMapHeight,
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    borderRadius: '4px',
+                    backgroundImage: `url(${mapData.src})`,
+                    backgroundSize: 'cover',
+                    zIndex: 200,
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                }}
+            >
+                {/* Viewport Indicator */}
                 <div style={{
                     position: 'absolute',
-                    bottom: '30px',
+                    border: '2px solid var(--accent-color)',
+                    backgroundColor: 'rgba(231, 111, 81, 0.2)',
+                    left: Math.max(0, viewportRect.left),
+                    top: Math.max(0, viewportRect.top),
+                    width: Math.min(MINI_MAP_WIDTH, viewportRect.width),
+                    height: Math.min(miniMapHeight, viewportRect.height),
+                    pointerEvents: 'none',
+                    transition: touchState.current.isPinching || touchState.current.isPanning ? 'none' : 'all 0.2s ease-out'
+                }} />
+            </div>
+
+            {/* Instruction Overlay */}
+            {scale === 1 && offset.x === 0 && offset.y === 0 && (
+                <div style={{
+                    position: 'absolute',
+                    bottom: '40px',
                     left: '50%',
                     transform: 'translateX(-50%)',
                     backgroundColor: 'rgba(0,0,0,0.7)',
                     color: 'white',
-                    padding: '10px 20px',
-                    borderRadius: '24px',
-                    fontSize: '0.9rem',
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    fontSize: '0.85rem',
                     pointerEvents: 'none',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                    zIndex: 20
+                    zIndex: 150
                 }}>
-                    點擊地圖或按鈕放大查看細節
+                    兩指開合縮放，單指平移地圖
                 </div>
             )}
         </div>
