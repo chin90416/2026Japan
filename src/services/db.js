@@ -105,21 +105,13 @@ export const deleteExpense = async (id) => {
 const getPackingColRef = () => collection(db, "trips", MAIN_TRIP_ID, "packing_list");
 
 export const subscribeToPackingList = (callback) => {
-    const q = query(getPackingColRef(), orderBy("timestamp", "asc"));
+    // 移除 orderBy 以免因缺少 timestamp 欄位而過濾掉新項目
+    const q = getPackingColRef();
     return onSnapshot(q, (snapshot) => {
         const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         callback(items);
     }, (error) => {
         console.error("Snapshot error for packing list:", error);
-        // If there's an index error or similar, try falling back to un-ordered query
-        if (error.code === 'failed-precondition') {
-            onSnapshot(getPackingColRef(), (snap) => {
-                const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Manual sort if no index
-                items.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                callback(items);
-            });
-        }
     });
 };
 

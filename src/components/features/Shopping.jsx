@@ -14,7 +14,9 @@ export default function Shopping() {
     // 訂閱 Firestore 清單紀錄
     React.useEffect(() => {
         const unsubscribe = subscribeToPackingList((data) => {
-            setItems(data);
+            // 手動排序以確保穩定，由新到舊或由舊到新
+            const sorted = [...data].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            setItems(sorted);
         });
         return () => unsubscribe();
     }, []);

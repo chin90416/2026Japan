@@ -26,6 +26,7 @@ export default function SubwayMap() {
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
     const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+    const [initialScale, setInitialScale] = useState(1);
 
     const containerRef = useRef(null);
     const imgRef = useRef(null);
@@ -37,33 +38,47 @@ export default function SubwayMap() {
         isPanning: false
     });
 
+    const resetMap = useCallback((containerW, containerH, imgW, imgH) => {
+        if (!containerW || !containerH || !imgW || !imgH) return;
+
+        // 計算全圖顯示的初始比例
+        const sX = containerW / imgW;
+        const sY = containerH / imgH;
+        const fitScale = Math.min(sX, sY, 1);
+
+        setInitialScale(fitScale);
+        setScale(fitScale);
+        setOffset({ x: 0, y: 0 });
+    }, []);
+
     // Update container size on mount/resize
     useEffect(() => {
         const updateSize = () => {
             if (containerRef.current) {
-                setContainerSize({
-                    width: containerRef.current.clientWidth,
-                    height: containerRef.current.clientHeight
-                });
+                const cw = containerRef.current.clientWidth;
+                const ch = containerRef.current.clientHeight;
+                setContainerSize({ width: cw, height: ch });
+
+                // 如果已經有圖片大小，則重新計算縮放
+                if (imageSize.width > 0) {
+                    resetMap(cw, ch, imageSize.width, imageSize.height);
+                }
             }
         };
         updateSize();
         window.addEventListener('resize', updateSize);
         return () => window.removeEventListener('resize', updateSize);
-    }, []);
+    }, [imageSize.width, imageSize.height, resetMap]);
 
     const handleImageLoad = (e) => {
-        setImageSize({
-            width: e.target.naturalWidth,
-            height: e.target.naturalHeight
-        });
-        resetMap();
-    };
+        const nw = e.target.naturalWidth;
+        const nh = e.target.naturalHeight;
+        setImageSize({ width: nw, height: nh });
 
-    const resetMap = useCallback(() => {
-        setScale(1);
-        setOffset({ x: 0, y: 0 });
-    }, []);
+        if (containerSize.width > 0) {
+            resetMap(containerSize.width, containerSize.height, nw, nh);
+        }
+    };
 
     // Gesture Handlers
     const handleTouchStart = (e) => {
@@ -91,7 +106,7 @@ export default function SubwayMap() {
                 e.touches[0].pageY - e.touches[1].pageY
             );
             const delta = dist / touchState.current.lastDistance;
-            setScale(prev => Math.min(Math.max(prev * delta, 0.5), 5));
+            setScale(prev => Math.min(Math.max(prev * delta, initialScale * 0.5), 5));
             touchState.current.lastDistance = dist;
         } else if (touchState.current.isPanning && e.touches.length === 1) {
             const dx = e.touches[0].pageX - touchState.current.lastX;
@@ -115,12 +130,11 @@ export default function SubwayMap() {
     const miniMapScale = imageSize.width ? MINI_MAP_WIDTH / imageSize.width : 0;
     const miniMapHeight = imageSize.height * miniMapScale;
 
-    // Viewport relative to image
+    // Viewport relative to image coordinates
     const visibleWidth = containerSize.width / scale;
     const visibleHeight = containerSize.height / scale;
 
-    // Offset is tracked in screen pixels, need to convert to image space
-    // Center is (containerSize.width / 2, containerSize.height / 2)
+    // centerX/Y index into original image coordinates
     const centerX = (containerSize.width / 2 - offset.x) / scale;
     const centerY = (containerSize.height / 2 - offset.y) / scale;
 
@@ -131,7 +145,10 @@ export default function SubwayMap() {
         height: visibleHeight * miniMapScale
     };
 
-    const handleMiniMapClick = (e) => {
+    // Unified pointer interaction for MiniMap (Android/iOS)
+    const handleMiniMapPointer = (e) => {
+        if (e.buttons !== 1 && e.type !== 'pointerdown') return;
+
         const miniMapRect = e.currentTarget.getBoundingClientRect();
         const clickX = e.clientX - miniMapRect.left;
         const clickY = e.clientY - miniMapRect.top;
@@ -187,8 +204,8 @@ export default function SubwayMap() {
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => setScale(prev => Math.min(prev + 0.5, 5))} style={{ padding: '8px', color: 'var(--accent-color)' }}><FaSearchPlus size={20} /></button>
-                    <button onClick={() => setScale(prev => Math.max(prev - 0.5, 0.5))} style={{ padding: '8px', color: 'var(--accent-color)' }}><FaSearchMinus size={20} /></button>
-                    <button onClick={resetMap} style={{ padding: '8px', color: 'var(--text-secondary)' }}><FaCompressArrowsAlt size={20} /></button>
+                    <button onClick={() => setScale(prev => Math.max(prev - 0.5, initialScale * 0.5))} style={{ padding: '8px', color: 'var(--accent-color)' }}><FaSearchMinus size={20} /></button>
+                    <button onClick={() => resetMap(containerSize.width, containerSize.height, imageSize.width, imageSize.height)} style={{ padding: '8px', color: 'var(--text-secondary)' }}><FaCompressArrowsAlt size={20} /></button>
                 </div>
             </div>
 
@@ -199,7 +216,7 @@ export default function SubwayMap() {
                     flex: 1,
                     position: 'relative',
                     overflow: 'hidden',
-                    cursor: scale > 1 ? 'grab' : 'default'
+                    cursor: scale > initialScale ? 'grab' : 'default'
                 }}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
@@ -224,11 +241,12 @@ export default function SubwayMap() {
 
             {/* Mini Map */}
             <div
-                onClick={handleMiniMapClick}
+                onPointerDown={handleMiniMapPointer}
+                onPointerMove={handleMiniMapPointer}
                 style={{
                     position: 'absolute',
-                    bottom: '24px',
-                    right: '24px',
+                    bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+                    right: '16px',
                     width: MINI_MAP_WIDTH,
                     height: miniMapHeight,
                     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -238,28 +256,29 @@ export default function SubwayMap() {
                     backgroundSize: 'cover',
                     zIndex: 200,
                     overflow: 'hidden',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                    touchAction: 'none'
                 }}
             >
                 {/* Viewport Indicator */}
                 <div style={{
                     position: 'absolute',
-                    border: '2px solid var(--accent-color)',
+                    border: '1px solid var(--accent-color)',
                     backgroundColor: 'rgba(231, 111, 81, 0.2)',
-                    left: Math.max(0, viewportRect.left),
-                    top: Math.max(0, viewportRect.top),
-                    width: Math.min(MINI_MAP_WIDTH, viewportRect.width),
-                    height: Math.min(miniMapHeight, viewportRect.height),
+                    left: viewportRect.left,
+                    top: viewportRect.top,
+                    width: viewportRect.width,
+                    height: viewportRect.height,
                     pointerEvents: 'none',
-                    transition: touchState.current.isPinching || touchState.current.isPanning ? 'none' : 'all 0.2s ease-out'
+                    transition: touchState.current.isPinching || touchState.current.isPanning ? 'none' : 'all 0.1s linear'
                 }} />
             </div>
 
             {/* Instruction Overlay */}
-            {scale === 1 && offset.x === 0 && offset.y === 0 && (
+            {scale <= initialScale && offset.x === 0 && offset.y === 0 && (
                 <div style={{
                     position: 'absolute',
-                    bottom: '40px',
+                    bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
                     left: '50%',
                     transform: 'translateX(-50%)',
                     backgroundColor: 'rgba(0,0,0,0.7)',
