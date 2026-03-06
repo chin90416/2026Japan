@@ -86,7 +86,8 @@ export default function Shopping() {
         e.preventDefault();
         if (!newItemText.trim()) return;
 
-        const tempId = `temp-${uuidv4()}`;
+        // 直接使用用戶端產生的 UUID 作為 Firebase 真實 ID，避免暫存 ID 與伺服器回傳不同步造成的「重複分身」
+        const newDocId = uuidv4();
         const itemData = {
             text: newItemText.trim(),
             checked: false,
@@ -106,8 +107,8 @@ export default function Shopping() {
         // 樂觀更新：立刻將帶有預覽圖的項目放到 pendingWrites，並標示是否正在上傳 (鎖定 UI)
         setPendingWrites(prev => ({
             ...prev,
-            [tempId]: {
-                id: tempId,
+            [newDocId]: {
+                id: newDocId,
                 ...itemData,
                 imageUrl: previewUrl || itemData.imageUrl,
                 isUploading: !!fileToUpload
@@ -136,7 +137,7 @@ export default function Shopping() {
                     // 發生錯誤，移除 pending 項目
                     setPendingWrites(prev => {
                         const next = { ...prev };
-                        delete next[tempId];
+                        delete next[newDocId];
                         return next;
                     });
                     return; // 中止後續寫入
@@ -148,16 +149,18 @@ export default function Shopping() {
                 if (finalImageUrl) {
                     setPendingWrites(prev => ({
                         ...prev,
-                        [tempId]: { ...prev[tempId], imageUrl: finalImageUrl, isUploading: false }
+                        [newDocId]: { ...prev[newDocId], imageUrl: finalImageUrl, isUploading: false }
                     }));
                 }
 
-                await addPackingItem(itemData);
+                // 將用戶端產生好的 UUID 傳給 DB，確保伺服器回傳的 Snapshot ID 完美等同於我們的 optimistic ID
+                await addPackingItem(itemData, newDocId);
+
                 // 等待防火牆或其它推播回來後再移除 pending（保留幾秒避免閃爍）
                 setTimeout(() => {
                     setPendingWrites(prev => {
                         const next = { ...prev };
-                        delete next[tempId];
+                        delete next[newDocId];
                         return next;
                     });
                 }, 3000);
@@ -165,7 +168,7 @@ export default function Shopping() {
                 console.error("Failed to add item", error);
                 setPendingWrites(prev => {
                     const next = { ...prev };
-                    delete next[tempId];
+                    delete next[newDocId];
                     return next;
                 });
                 alert("新增項目失敗，請稍後再試。");

@@ -115,12 +115,20 @@ export const subscribeToPackingList = (callback) => {
     });
 };
 
-export const addPackingItem = async (itemData) => {
-    const docRef = await addDoc(getPackingColRef(), {
+export const addPackingItem = async (itemData, suggestedId = null) => {
+    const finalData = {
         ...itemData,
         timestamp: itemData.timestamp || Date.now()
-    });
-    return docRef.id;
+    };
+
+    if (suggestedId) {
+        const docRef = doc(db, "trips", MAIN_TRIP_ID, "packing_list", suggestedId);
+        await setDoc(docRef, finalData);
+        return suggestedId;
+    } else {
+        const docRef = await addDoc(getPackingColRef(), finalData);
+        return docRef.id;
+    }
 };
 
 export const updatePackingItem = async (id, updates) => {
