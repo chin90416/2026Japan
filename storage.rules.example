@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // 檢查使用者的 email 是否在專屬白名單內 
+    // TODO: 請在這裡填寫有權限存取行程表的 Google 帳號 Email
+    function isAllowedUser() {
+      return request.auth != null && (
+        request.auth.token.email == "user1@example.com" || 
+        request.auth.token.email == "user2@example.com"  
+      );
+    }
+
+    match /{allPaths=**} {
+      // 只有名單內的人可以下載/看見 (read) 圖片或檔案
+      allow read: if isAllowedUser();
+
+      // 只有名單內的人可以上傳 (create/update)
+      // 且檔案大小必須小於 15 MB
+      // 且檔案類型必須是圖片 (以 image/ 開頭)
+      allow create, update: if isAllowedUser() 
+                   && request.resource != null
+                   && request.resource.size < 15 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+                   
+      // 允許名單內的人刪除圖片
+      allow delete: if isAllowedUser();
+    }
+  }
+}
