@@ -10,7 +10,7 @@ export function useGlobal() {
 
 export function GlobalProvider({ children }) {
     // 初始化時，優先從 localStorage 撈取先前的快取，達到瞬間載入
-    const [isGlobalLoading, setIsGlobalLoading] = useState(true); // 預設為 true，等待首次讀取完成
+    const [isGlobalLoading, setIsGlobalLoading] = useState(false); // 預設為 false，解除畫面阻擋
 
     const [exchangeRate, setExchangeRate] = useState(() => {
         const cached = localStorage.getItem('cachedExchangeRate');
