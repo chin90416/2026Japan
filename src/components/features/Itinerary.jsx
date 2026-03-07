@@ -263,6 +263,31 @@ export default function Itinerary() {
         return <FaSun color="#f5a623" />;
     };
 
+    // 取得 Google Maps 導航用的深度連結
+    const getGoogleMapsLink = (location) => {
+        if (!location) return '#';
+
+        const isUrl = location.startsWith('http://') || location.startsWith('https://');
+        const isAndroid = /Android/i.test(navigator.userAgent);
+
+        let targetUrl = '';
+
+        if (isUrl) {
+            targetUrl = location;
+        } else {
+            targetUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
+        }
+
+        if (isAndroid) {
+            // Android 專屬的 Intent URI 格式強制喚醒 App
+            // 如果網址已有 protocol 需要拔掉給 intent 用
+            const intentUrl = targetUrl.replace(/^https?:\/\//, '');
+            return `intent://${intentUrl}#Intent;scheme=https;package=com.google.android.apps.maps;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
+        }
+
+        return targetUrl; // iOS 或 Desktop 正常回傳網址 (iOS 通用連結會自動接管)
+    };
+
     return (
         <div className="page-container">
             <h1 className="page-title">2026日本關西五日遊</h1>
@@ -430,7 +455,7 @@ export default function Itinerary() {
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: '#EBF8FF' }}>
                                     <a
-                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedEventDetails.location)}`}
+                                        href={getGoogleMapsLink(selectedEventDetails.location)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{
