@@ -29,12 +29,17 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const requestUrl = new URL(event.request.url);
 
-    // 只有我們目標網域 (Firebase Storage) 的 GET 請求進行快取
-    if (requestUrl.hostname.includes(TARGET_DOMAIN) && event.request.method === 'GET') {
+    // 判斷是否為 Firebase Storage 圖片
+    const isFirebaseStorage = requestUrl.hostname.includes(TARGET_DOMAIN);
 
-        // 核心修正：Firebase Storage 網址帶有動態 token (安全權杖)
-        // 為了確保「同一張圖片」不論在哪個當下讀取都能精確命中快取
-        // 我們要把網址後面的 ?alt=media&token=xxx 全部拔掉，只用乾淨的基礎路徑作為快取鑰匙
+    // 判斷是否為本地或其他來源的各種靜態圖片 (包含我們包進來的路線圖)
+    const isImageFile = requestUrl.pathname.match(/\.(png|jpe?g|svg|gif|webp)$/i);
+
+    // 只要是 Firebase 圖片或常見附檔名的靜態圖片的 GET 請求，就進行快取
+    if ((isFirebaseStorage || isImageFile) && event.request.method === 'GET') {
+
+        // 核心修正：不管是 Firebase 的 token 還是一般網址後綴的無用參數
+        // 我們要把網址後面的 ?xxx 全部拔掉，只用乾淨的基礎路徑作為快取鑰匙
         const cleanUrl = requestUrl.origin + requestUrl.pathname;
 
         event.respondWith(

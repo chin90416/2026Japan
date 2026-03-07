@@ -234,7 +234,7 @@ export default function Info() {
                     {/* 強制重新整理並清除本機快取按鈕 */}
                     <button
                         onClick={async () => {
-                            if (window.confirm('確定要強制重新整理並清除本機暫存？這將會重新下載雲端最新資料並清除 Firestore 快取。')) {
+                            if (window.confirm('確定要強制重新整理並清除本機暫存？這將會重新下載雲端最新資料，並清除所有已快取的圖片與設定。')) {
                                 try {
                                     // 清除 localStorage
                                     localStorage.removeItem('cachedExchangeRate');
@@ -243,6 +243,12 @@ export default function Info() {
                                     // 嘗試清除 Firestore Persistence
                                     await terminate(db).catch(() => { });
                                     await clearIndexedDbPersistence(db).catch(() => { });
+
+                                    // 清除 Service Worker 圖片永久快取 (Cache API)
+                                    if ('caches' in window) {
+                                        const cacheNames = await window.caches.keys();
+                                        await Promise.all(cacheNames.map(name => window.caches.delete(name)));
+                                    }
 
                                     // 重新整理
                                     window.location.reload();
