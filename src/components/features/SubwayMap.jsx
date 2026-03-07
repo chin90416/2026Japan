@@ -277,7 +277,8 @@ export default function SubwayMap() {
                         transformOrigin: '0 0',
                         transform: `translate(${viewerState.x}px, ${viewerState.y}px) scale(${viewerState.scale}) translate(-50%, -50%)`,
                         maxWidth: 'none',
-                        transition: touchState.current.isPinching || touchState.current.isPanning ? 'none' : 'transform 0.1s ease-out'
+                        opacity: imageSize.width > 0 ? 1 : 0,
+                        transition: touchState.current.isPinching || touchState.current.isPanning ? 'none' : 'transform 0.1s ease-out, opacity 0.2s ease-in'
                     }}
                 />
             </div>
