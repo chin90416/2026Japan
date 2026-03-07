@@ -60,7 +60,11 @@ self.addEventListener('fetch', (event) => {
 
                         // 3. 將抓到的新圖片複製一份，綁定「乾淨網址」放入快取金庫中永久保存
                         const responseToCache = networkResponse.clone();
-                        cache.put(cleanUrl, responseToCache);
+                        cache.put(cleanUrl, responseToCache).catch((err) => {
+                            // 針對 iOS Safari 或空間不足的設備 (QuotaExceededError)
+                            // 即使無法存入快取，也不要阻斷圖片顯示
+                            console.warn('無法將圖片寫入快取 (可能因為 iOS 容量限制):', err);
+                        });
 
                         // 4. 並把原生回應丟回去給 APP 渲染
                         return networkResponse;
