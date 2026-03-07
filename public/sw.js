@@ -29,34 +29,38 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const requestUrl = new URL(event.request.url);
 
-    // 只有我們目標網域 (Firebase Storage) 的 GET 請求，而且不包含 token，才進行快取
+    // 只有我們目標網域 (Firebase Storage) 的 GET 請求進行快取
     if (requestUrl.hostname.includes(TARGET_DOMAIN) && event.request.method === 'GET') {
+
+        // 核心修正：Firebase Storage 網址帶有動態 token (安全權杖)
+        // 為了確保「同一張圖片」不論在哪個當下讀取都能精確命中快取
+        // 我們要把網址後面的 ?alt=media&token=xxx 全部拔掉，只用乾淨的基礎路徑作為快取鑰匙
+        const cleanUrl = requestUrl.origin + requestUrl.pathname;
+
         event.respondWith(
             caches.open(CACHE_NAME).then((cache) => {
-                return cache.match(event.request).then((cachedResponse) => {
-                    // 1. 如果有快取，直接回傳給 APP，無網路損耗
+                // 使用乾淨的網址尋找快取
+                return cache.match(cleanUrl).then((cachedResponse) => {
+                    // 1. 若本地已經有完美快取，直接以光速丟回給 APP，不消耗網路
                     if (cachedResponse) {
                         return cachedResponse;
                     }
 
-                    // 2. 如果沒有快取，發送原始網路請求
+                    // 2. 若快取沒有，乖乖發送原始帶有 token 的正常網路請求去抓新圖
                     return fetch(event.request).then((networkResponse) => {
-                        // Firebase Storage 跨域圖片的 response.type 可能是 'opaque'，此時 status 會是 0
-                        // 確保我們接收 basic, cors 或 opaque 類型的正確回應
+                        // 確保拿回來的圖片是正常的 (包含跨域不透明 opaque 回應)
                         if (!networkResponse || (networkResponse.status !== 200 && networkResponse.type !== 'opaque')) {
                             return networkResponse;
                         }
 
-                        // 3. 請求成功，克隆一份 Response 存入快取
+                        // 3. 將抓到的新圖片複製一份，綁定「乾淨網址」放入快取金庫中永久保存
                         const responseToCache = networkResponse.clone();
-                        cache.put(event.request, responseToCache);
+                        cache.put(cleanUrl, responseToCache);
 
-                        // 4. 將結果回傳給 APP
+                        // 4. 並把原生回應丟回去給 APP 渲染
                         return networkResponse;
                     }).catch(err => {
-                        // 離線且無快取的情況
-                        console.log('Fetch error (offline):', err);
-                        // 可以考慮這裡加上 fallback 的圖片
+                        console.log('圖片抓取失敗 (可能離線):', err);
                         throw err;
                     });
                 });

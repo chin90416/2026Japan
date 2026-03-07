@@ -44,16 +44,32 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// 註冊 Service Worker 以實現圖片本地快取
+// 註冊 Service Worker 以實現圖片本地永久快取
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     // 配合 Vite base 設定，路徑需要加上 /2026Japan/
     navigator.serviceWorker.register('/2026Japan/sw.js')
       .then((registration) => {
         console.log('ServiceWorker 註冊成功，範圍：', registration.scope);
+
+        // 若偵測到新版 Service Worker 裝好，強制整理網頁套用最新快取策略
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+              console.log('新版快取系統上線，正在重新整理套用...');
+              window.location.reload();
+            }
+          });
+        });
       })
       .catch((error) => {
         console.log('ServiceWorker 註冊失敗：', error);
       });
+
+    // 確保一開始就接管控制權
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      console.log('Service Worker 控制權已轉交！');
+    });
   });
 }
