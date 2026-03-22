@@ -143,3 +143,16 @@ export const deletePackingItem = async (id) => {
     const docRef = doc(db, "trips", MAIN_TRIP_ID, "packing_list", id);
     await deleteDoc(docRef);
 };
+
+// ===== 資料匯出專用 (One-time fetch) ===== //
+export const getAllItineraries = async () => {
+    const q = query(getItineraryColRef(), orderBy("order", "asc"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const getAllExpenses = async () => {
+    const q = query(getExpensesColRef(), orderBy("timestamp", "desc"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};

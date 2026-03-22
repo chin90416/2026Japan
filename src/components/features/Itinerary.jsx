@@ -1,9 +1,167 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaCloudSun, FaCloudRain, FaSun, FaMapMarkerAlt, FaMap, FaInfoCircle, FaTicketAlt, FaClock, FaTimes, FaExternalLinkAlt, FaStickyNote, FaEdit } from 'react-icons/fa';
+import { FaPlus, FaCloudSun, FaCloudRain, FaSun, FaMapMarkerAlt, FaMap, FaInfoCircle, FaTicketAlt, FaClock, FaTimes, FaExternalLinkAlt, FaStickyNote, FaEdit, FaQrcode, FaExpand, FaTrash } from 'react-icons/fa';
 import { addMinutes, format, parse } from 'date-fns';
 import { SortableEventItem } from './SortableEventItem';
 import { useGlobal } from '../../contexts/GlobalContext';
 import { subscribeToItineraries, addItineraryEvent, updateItineraryEvent, deleteItineraryEvent } from '../../services/db';
+import { useAuth } from '../../contexts/AuthContext';
+import { uploadImage, deleteImage } from '../../services/storage';
+import { v4 as uuidv4 } from 'uuid';
+
+const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userProfiles, onZoom }) => {
+    const [isUploading, setIsUploading] = useState(false);
+    const [showForm, setShowForm] = useState(false);
+    const [ticketOwner, setTicketOwner] = useState(currentUser?.email || '');
+    const [selectedFile, setSelectedFile] = useState(null);
+
+    const tickets = activeEvent.extraInfo?.tickets || [];
+    const [viewOtherTickets, setViewOtherTickets] = useState(false);
+    
+    const userTickets = tickets.filter(t => t.ownerEmail === currentUser?.email);
+    const otherTickets = tickets.filter(t => t.ownerEmail !== currentUser?.email);
+    // 預設如果自己有車票，就只顯示自己的；如果自己沒車票，就顯示全部
+    const displayTickets = viewOtherTickets ? tickets : (userTickets.length > 0 ? userTickets : tickets);
+
+    const handleFileChange = (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setSelectedFile(e.target.files[0]);
+        }
+    };
+
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            alert("請選擇圖片檔");
+            return;
+        }
+        setIsUploading(true);
+        try {
+            const fileName = `tickets/${uuidv4()}_${selectedFile.name}`;
+            const downloadUrl = await uploadImage(selectedFile, fileName);
+            
+            const newTicket = { id: uuidv4(), ownerEmail: ticketOwner, imageUrl: downloadUrl, timestamp: Date.now() };
+            const updatedTickets = [...tickets, newTicket];
+            
+            await updateItineraryEvent(activeEvent.id, {
+                extraInfo: { ...activeEvent.extraInfo, tickets: updatedTickets }
+            });
+            
+            // reset form
+            setShowForm(false);
+            setSelectedFile(null);
+            setTicketOwner(currentUser?.email || '');
+        } catch (error) {
+            console.error(error);
+            alert("上傳車票失敗！");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleDelete = async (ticket) => {
+        if (!window.confirm("確定刪除此車票圖片？")) return;
+        try {
+            await deleteImage(ticket.imageUrl);
+            const updatedTickets = tickets.filter(t => t.id !== ticket.id);
+            await updateItineraryEvent(activeEvent.id, {
+                extraInfo: { ...activeEvent.extraInfo, tickets: updatedTickets }
+            });
+        } catch(error) {
+            console.error(error);
+            alert("刪除車票失敗！");
+        }
+    };
+
+    return (
+        <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                    <FaQrcode color="#319795" /> 電子車票區
+                </div>
+                <button
+                    onClick={() => setShowForm(!showForm)}
+                    style={{ fontSize: '0.85rem', padding: '4px 12px', borderRadius: '12px', backgroundColor: '#E6FFFA', color: '#319795', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
+                >
+                    {showForm ? '取消新增' : '+ 新增車票'}
+                </button>
+            </div>
+
+            {showForm && (
+                <div style={{ padding: '16px', backgroundColor: '#F7FAFC', borderRadius: 'var(--radius-md)', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-secondary)' }}>持有者帳號 (Email)</label>
+                    <select
+                        value={ticketOwner}
+                        onChange={e => setTicketOwner(e.target.value)}
+                        style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', marginBottom: '12px', fontSize: '0.9rem' }}
+                    >
+                        <option value={currentUser?.email}>{currentUser?.email} (我)</option>
+                        {allowedEmails.filter(e => e !== currentUser?.email).map(email => (
+                            <option key={email} value={email}>{email}</option>
+                        ))}
+                    </select>
+
+                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-secondary)' }}>選擇圖片 (截圖或照片)</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            style={{ flex: 1, fontSize: '0.85rem' }}
+                            disabled={isUploading}
+                        />
+                        <button
+                            onClick={handleUpload}
+                            disabled={isUploading || !selectedFile}
+                            style={{ padding: '6px 16px', backgroundColor: (isUploading || !selectedFile) ? '#CBD5E1' : 'var(--accent-color)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isUploading ? 'wait' : 'pointer' }}
+                        >
+                            {isUploading ? '上傳中...' : '儲存'}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {tickets.length > 0 && userTickets.length > 0 && otherTickets.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+                    <div 
+                        onClick={() => setViewOtherTickets(!viewOtherTickets)}
+                        style={{ fontSize: '0.8rem', color: '#3182CE', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                        {viewOtherTickets ? '只顯示我的車票' : `顯示所有人車票 (${tickets.length})`}
+                    </div>
+                </div>
+            )}
+
+            {displayTickets.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                    {displayTickets.map(ticket => (
+                        <div key={ticket.id} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#fff', boxShadow: 'var(--shadow-sm)' }}>
+                            <img 
+                                src={ticket.imageUrl} 
+                                alt="Ticket"
+                                onClick={() => onZoom(ticket)}
+                                style={{ width: '100%', height: '120px', objectFit: 'cover', cursor: 'pointer', display: 'block' }}
+                            />
+                            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 8px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
+                                    {userProfiles?.[ticket.ownerEmail] || (ticket.ownerEmail === currentUser?.email ? '我' : ticket.ownerEmail.split('@')[0])}
+                                </span>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <FaExpand onClick={() => onZoom(ticket)} style={{ cursor: 'pointer' }} />
+                                    {ticket.ownerEmail === currentUser?.email && (
+                                        <FaTrash onClick={() => handleDelete(ticket)} style={{ cursor: 'pointer', color: '#FC8181' }} />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#F8FAFC', borderRadius: '8px', color: '#94A3B8', fontSize: '0.9rem' }}>
+                    尚未上傳任何車票
+                </div>
+            )}
+        </div>
+    );
+};
 
 // Time calculation helpers
 const timeToMinutes = (timeStr) => {
@@ -21,7 +179,11 @@ const minutesToTime = (totalMinutes) => {
 };
 
 export default function Itinerary() {
-    const { tripDates } = useGlobal();
+    const { tripDates, userProfiles } = useGlobal();
+    const { currentUser } = useAuth();
+    const allowedEmailsStr = import.meta.env.VITE_ALLOWED_EMAILS || "";
+    const allowedEmails = allowedEmailsStr.split(",").map(e => e.trim().toLowerCase()).filter(e => e);
+    const [fullscreenTicket, setFullscreenTicket] = useState(null);
     const dates = tripDates || [];
 
     // Current time tracking for progress bar
@@ -475,10 +637,19 @@ export default function Itinerary() {
                         {(selectedEventDetails.type === 'transport' || selectedEventDetails.type === 'flight') && selectedEventDetails.extraInfo && (
                             <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#fff', borderRadius: 'var(--radius-md)', border: `2px dashed ${selectedEventDetails.type === 'flight' ? '#805AD5' : '#3182CE'}` }}>
                                 {selectedEventDetails.type === 'transport' && (
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <div><div style={{ fontSize: '0.8rem', color: '#64748b' }}>路線</div><strong>{selectedEventDetails.extraInfo.route || '---'}</strong></div>
-                                        <div style={{ textAlign: 'right' }}><div style={{ fontSize: '0.8rem', color: '#64748b' }}>座位</div><strong>{selectedEventDetails.extraInfo.seat || '---'}</strong></div>
-                                    </div>
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <div><div style={{ fontSize: '0.8rem', color: '#64748b' }}>路線</div><strong>{selectedEventDetails.extraInfo.route || '---'}</strong></div>
+                                            <div style={{ textAlign: 'right' }}><div style={{ fontSize: '0.8rem', color: '#64748b' }}>座位</div><strong>{selectedEventDetails.extraInfo.seat || '---'}</strong></div>
+                                        </div>
+                                        <TicketDisplaySection
+                                            activeEvent={events.find(e => e.id === selectedEventDetails.id) || selectedEventDetails}
+                                            currentUser={currentUser}
+                                            allowedEmails={allowedEmails}
+                                            userProfiles={userProfiles || {}}
+                                            onZoom={setFullscreenTicket}
+                                        />
+                                    </>
                                 )}
                                 {selectedEventDetails.type === 'flight' && (
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -680,6 +851,29 @@ export default function Itinerary() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Fullscreen Ticket Viewer */}
+            {fullscreenTicket && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 3000,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                }} onClick={() => setFullscreenTicket(null)}>
+                    <div style={{ position: 'absolute', top: '20px', right: '20px', color: 'white', cursor: 'pointer', padding: '8px' }}>
+                        <FaTimes size={30} />
+                    </div>
+                    <img 
+                        src={fullscreenTicket.imageUrl} 
+                        alt="Fullscreen Ticket" 
+                        style={{ maxWidth: '95%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px' }}
+                    />
+                    <div style={{ color: 'white', marginTop: '16px', fontSize: '1.2rem', fontWeight: 'bold' }}>
+                        {userProfiles?.[fullscreenTicket.ownerEmail] 
+                            ? `${userProfiles[fullscreenTicket.ownerEmail]} 的車票` 
+                            : (fullscreenTicket.ownerEmail === currentUser?.email ? '我的車票' : `${fullscreenTicket.ownerEmail.split('@')[0]} 的車票`)}
                     </div>
                 </div>
             )}

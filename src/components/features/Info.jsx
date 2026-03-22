@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { FaExchangeAlt, FaCalendarAlt, FaTimes } from 'react-icons/fa';
+import { FaExchangeAlt, FaCalendarAlt, FaTimes, FaFileExport, FaDownload, FaUserEdit } from 'react-icons/fa';
 import { useGlobal } from '../../contexts/GlobalContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase';
 import { terminate, clearIndexedDbPersistence } from 'firebase/firestore';
+import { getAllItineraries, getAllExpenses } from '../../services/db';
 
 export default function Info() {
-    const { exchangeRate, setExchangeRate, tripDates, generateTripDates } = useGlobal();
+    const { exchangeRate, setExchangeRate, tripDates, generateTripDates, userProfiles, updateUserProfile } = useGlobal();
+    const { currentUser } = useAuth();
 
     const [showRateModal, setShowRateModal] = useState(false);
     const [tempRate, setTempRate] = useState('');
@@ -13,6 +16,16 @@ export default function Info() {
     const [showDateModal, setShowDateModal] = useState(false);
     const [startDate, setStartDate] = useState('');
     const [daysCount, setDaysCount] = useState(tripDates.length.toString());
+
+    const [showProfileModal, setShowProfileModal] = useState(false);
+    const [tempDisplayName, setTempDisplayName] = useState('');
+
+    const handleSaveProfile = async () => {
+        if (!currentUser?.email) return;
+        if (tempDisplayName.trim() === '') return;
+        await updateUserProfile(currentUser.email, tempDisplayName.trim());
+        setShowProfileModal(false);
+    };
 
     const handleSaveRate = () => {
         const rate = parseFloat(tempRate);
@@ -29,6 +42,86 @@ export default function Info() {
             setShowDateModal(false);
         }
     };
+
+    const formatDateForFilename = () => {
+        const now = new Date();
+        return `${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}`;
+    };
+
+    const handleExportItinerary = async () => {
+        try {
+            const data = await getAllItineraries();
+            if (data.length === 0) {
+                alert('沒有可匯出的行程資料');
+                return;
+            }
+
+            const headers = ['日期(Date)', '時間(Time)', '標題(Title)', '類型(Type)', '停留時間(Duration)', '地點(Location)', '訂位資訊(Booking)', '備註(Notes)'];
+            let csvContent = '\uFEFF' + headers.join(',') + '\n';
+
+            data.forEach(item => {
+                const date = item.date || '';
+                const time = item.time || item.startTime || '';
+                const title = `"${(item.title || '').replace(/"/g, '""')}"`;
+                const type = item.type || '';
+                const duration = item.duration || '';
+                const location = `"${(item.location || '').replace(/"/g, '""')}"`;
+                const booking = `"${(item.bookingInfo || '').replace(/"/g, '""')}"`;
+                const notesContent = [item.desc, item.notes].filter(Boolean).join(' / ');
+                const notes = `"${notesContent.replace(/"/g, '""')}"`;
+
+                csvContent += `${date},${time},${title},${type},${duration},${location},${booking},${notes}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Itinerary_Export_${formatDateForFilename()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error('匯出行程失敗', err);
+            alert('匯出行程發生錯誤！');
+        }
+    };
+
+    const handleExportExpenses = async () => {
+        try {
+            const data = await getAllExpenses();
+            if (data.length === 0) {
+                alert('沒有可匯出的記帳資料');
+                return;
+            }
+
+            const headers = ['日期(Date)', '項目名稱(Name)', '分類(Category)', '幣別(Currency)', '金額(Amount)'];
+            let csvContent = '\uFEFF' + headers.join(',') + '\n';
+
+            data.forEach(item => {
+                const date = item.date || '';
+                const name = `"${(item.name || '').replace(/"/g, '""')}"`;
+                const category = item.category || '';
+                const currency = item.currency || '';
+                const amount = item.amount || 0;
+
+                csvContent += `${date},${name},${category},${currency},${amount}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Expenses_Export_${formatDateForFilename()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error('匯出記帳失敗', err);
+            alert('匯出記帳發生錯誤！');
+        }
+    };
+
     return (
         <div className="page-container" style={{ paddingBottom: '100px' }}>
             <h1 className="page-title">資訊</h1>
@@ -231,6 +324,37 @@ export default function Info() {
                         </div>
                     </button>
 
+                    {/* 顯示名稱設定按鈕 */}
+                    <button
+                        onClick={() => {
+                            setTempDisplayName(userProfiles[currentUser?.email] || '');
+                            setShowProfileModal(true);
+                        }}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            backgroundColor: 'white',
+                            padding: '16px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-color)',
+                            boxShadow: 'var(--shadow-sm)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ backgroundColor: '#F0FFF4', padding: '10px', borderRadius: '50%', color: '#38A169' }}>
+                                <FaUserEdit size={18} />
+                            </div>
+                            <div style={{ textAlign: 'left' }}>
+                                <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>自訂顯示名稱</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                    當前顯示：{userProfiles[currentUser?.email] || currentUser?.email?.split('@')[0] || '未登入'}
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+
                     {/* 強制重新整理並清除本機快取按鈕 */}
                     <button
                         onClick={async () => {
@@ -274,6 +398,69 @@ export default function Info() {
                         }}
                     >
                         強制重新整理與清除本機快取
+                    </button>
+                </div>
+            </div>
+
+            {/* 資料匯出 */}
+            <div style={{
+                marginTop: '32px',
+                paddingTop: '32px',
+                borderTop: '2px dashed var(--border-color)'
+            }}>
+                <h2 style={{ fontSize: '1.2rem', marginBottom: '16px', color: 'var(--text-primary)' }}>資料匯出</h2>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <button
+                        onClick={handleExportItinerary}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            backgroundColor: 'white',
+                            padding: '16px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-color)',
+                            boxShadow: 'var(--shadow-sm)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ backgroundColor: '#E2E8F0', padding: '10px', borderRadius: '50%', color: '#4A5568' }}>
+                                <FaFileExport size={18} />
+                            </div>
+                            <div style={{ textAlign: 'left' }}>
+                                <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>匯出行程 (CSV)</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>下載以便在其他應用程式分析</div>
+                            </div>
+                        </div>
+                        <FaDownload color="var(--text-secondary)" />
+                    </button>
+
+                    <button
+                        onClick={handleExportExpenses}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            backgroundColor: 'white',
+                            padding: '16px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-color)',
+                            boxShadow: 'var(--shadow-sm)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ backgroundColor: '#E2E8F0', padding: '10px', borderRadius: '50%', color: '#4A5568' }}>
+                                <FaFileExport size={18} />
+                            </div>
+                            <div style={{ textAlign: 'left' }}>
+                                <div style={{ fontWeight: 'bold', color: 'var(--text-primary)' }}>匯出記帳 (CSV)</div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>下載以便在其他應用程式分析</div>
+                            </div>
+                        </div>
+                        <FaDownload color="var(--text-secondary)" />
                     </button>
                 </div>
             </div>
@@ -346,6 +533,44 @@ export default function Info() {
 
                         <button onClick={handleSaveDate} style={{ width: '100%', padding: '12px', backgroundColor: 'var(--accent-color)', color: 'white', border: 'none', borderRadius: '24px', fontWeight: 'bold', cursor: 'pointer' }}>
                             產生行程
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* 自訂顯示名稱 Modal */}
+            {showProfileModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                    backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 2000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }} onClick={() => setShowProfileModal(false)}>
+                    <div style={{
+                        backgroundColor: 'white', padding: '24px', borderRadius: 'var(--radius-lg)',
+                        width: '90%', maxWidth: '320px', boxShadow: 'var(--shadow-md)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                            <h3 style={{ margin: 0 }}>自訂顯示名稱</h3>
+                            <button onClick={() => setShowProfileModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><FaTimes size={20} /></button>
+                        </div>
+
+                        <div style={{ marginBottom: '24px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                您目前登入的帳號：<br />
+                                <strong>{currentUser?.email}</strong>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="例如：爸爸、UserA"
+                                value={tempDisplayName}
+                                onChange={(e) => setTempDisplayName(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid var(--border-color)', fontSize: '1rem' }}
+                                autoFocus
+                            />
+                        </div>
+
+                        <button onClick={handleSaveProfile} style={{ width: '100%', padding: '12px', backgroundColor: 'var(--accent-color)', color: 'white', border: 'none', borderRadius: '24px', fontWeight: 'bold', cursor: 'pointer' }}>
+                            儲存名稱
                         </button>
                     </div>
                 </div>

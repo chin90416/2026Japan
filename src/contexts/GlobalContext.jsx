@@ -31,6 +31,14 @@ export function GlobalProvider({ children }) {
         ];
     });
 
+    const [userProfiles, setUserProfiles] = useState(() => {
+        const cached = localStorage.getItem('cachedUserProfiles');
+        if (cached) {
+            try { return JSON.parse(cached); } catch (e) { }
+        }
+        return {};
+    });
+
     // 啟動時訂閱 Firestore
     useEffect(() => {
         let isFirstLoad = true;
@@ -43,6 +51,10 @@ export function GlobalProvider({ children }) {
                 if (data.tripDates && data.tripDates.length > 0) {
                     setTripDates(data.tripDates);
                     localStorage.setItem('cachedTripDates', JSON.stringify(data.tripDates));
+                }
+                if (data.userProfiles) {
+                    setUserProfiles(data.userProfiles);
+                    localStorage.setItem('cachedUserProfiles', JSON.stringify(data.userProfiles));
                 }
             }
             if (isFirstLoad) {
@@ -86,14 +98,28 @@ export function GlobalProvider({ children }) {
         }
     };
 
+    const updateUserProfile = async (email, newName) => {
+        try {
+            const updatedProfiles = { ...userProfiles, [email]: newName };
+            setUserProfiles(updatedProfiles); // 樂觀更新
+            localStorage.setItem('cachedUserProfiles', JSON.stringify(updatedProfiles));
+            await updateTripSettings({ userProfiles: updatedProfiles });
+        } catch (error) {
+            console.error("更新使用者名稱失敗", error);
+            alert("儲存名稱失敗！請檢查網路連線或權限設定：\n" + error.message);
+        }
+    };
+
     const value = React.useMemo(() => ({
         exchangeRate,
         setExchangeRate: changeExchangeRate,
         tripDates,
         setTripDates,
         generateTripDates,
+        userProfiles,
+        updateUserProfile,
         isGlobalLoading
-    }), [exchangeRate, tripDates, isGlobalLoading]);
+    }), [exchangeRate, tripDates, userProfiles, isGlobalLoading]);
 
     return (
         <GlobalContext.Provider value={value}>
