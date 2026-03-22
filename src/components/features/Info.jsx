@@ -9,6 +9,10 @@ import { getAllItineraries, getAllExpenses } from '../../services/db';
 export default function Info() {
     const { exchangeRate, setExchangeRate, tripDates, generateTripDates, userProfiles, updateUserProfile } = useGlobal();
     const { currentUser } = useAuth();
+    
+    // 取出並處理白名單設定
+    const allowedEmailsStr = import.meta.env.VITE_ALLOWED_EMAILS || "";
+    const allowedEmails = allowedEmailsStr.split(",").map(e => e.trim().toLowerCase()).filter(e => e);
 
     const [showRateModal, setShowRateModal] = useState(false);
     const [tempRate, setTempRate] = useState('');
@@ -19,12 +23,20 @@ export default function Info() {
 
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [tempDisplayName, setTempDisplayName] = useState('');
+    const [targetEmail, setTargetEmail] = useState('');
 
     const handleSaveProfile = async () => {
-        if (!currentUser?.email) return;
+        if (!targetEmail) return;
         if (tempDisplayName.trim() === '') return;
-        await updateUserProfile(currentUser.email, tempDisplayName.trim());
+        await updateUserProfile(targetEmail, tempDisplayName.trim());
         setShowProfileModal(false);
+    };
+
+    const handleOpenProfileModal = () => {
+        const initialEmail = currentUser?.email || (allowedEmails.length > 0 ? allowedEmails[0] : '');
+        setTargetEmail(initialEmail);
+        setTempDisplayName(userProfiles[initialEmail] || '');
+        setShowProfileModal(true);
     };
 
     const handleSaveRate = () => {
@@ -326,10 +338,7 @@ export default function Info() {
 
                     {/* 顯示名稱設定按鈕 */}
                     <button
-                        onClick={() => {
-                            setTempDisplayName(userProfiles[currentUser?.email] || '');
-                            setShowProfileModal(true);
-                        }}
+                        onClick={handleOpenProfileModal}
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -556,8 +565,30 @@ export default function Info() {
 
                         <div style={{ marginBottom: '24px' }}>
                             <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                您目前登入的帳號：<br />
-                                <strong>{currentUser?.email}</strong>
+                                選擇要修改的帳號：
+                            </label>
+                            <select
+                                value={targetEmail}
+                                onChange={(e) => {
+                                    setTargetEmail(e.target.value);
+                                    setTempDisplayName(userProfiles[e.target.value] || '');
+                                }}
+                                style={{
+                                    width: '100%', padding: '10px', borderRadius: '4px',
+                                    border: '1px solid var(--border-color)', fontSize: '1rem',
+                                    marginBottom: '16px', backgroundColor: 'var(--bg-color, white)'
+                                }}
+                            >
+                                {allowedEmails.map(email => (
+                                    <option key={email} value={email}>
+                                        {email} {email === currentUser?.email ? '(我)' : ''} 
+                                        {userProfiles[email] ? ` - ${userProfiles[email]}` : ''}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                自訂顯示名稱：
                             </label>
                             <input
                                 type="text"
