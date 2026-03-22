@@ -93,9 +93,9 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
                         onChange={e => setTicketOwner(e.target.value)}
                         style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', marginBottom: '12px', fontSize: '0.9rem' }}
                     >
-                        <option value={currentUser?.email}>{currentUser?.email} (我)</option>
+                        <option value={currentUser?.email}>{userProfiles?.[currentUser?.email] || currentUser?.email} (我)</option>
                         {allowedEmails.filter(e => e !== currentUser?.email).map(email => (
-                            <option key={email} value={email}>{email}</option>
+                            <option key={email} value={email}>{userProfiles?.[email] || email}</option>
                         ))}
                     </select>
 
@@ -142,7 +142,7 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
                             />
                             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 8px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
-                                    {userProfiles?.[ticket.ownerEmail] || (ticket.ownerEmail === currentUser?.email ? '我' : ticket.ownerEmail.split('@')[0])}
+                                    {userProfiles?.[ticket.ownerEmail] ? userProfiles[ticket.ownerEmail] : ticket.ownerEmail}
                                 </span>
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                     <FaExpand onClick={() => onZoom(ticket)} style={{ cursor: 'pointer' }} />
