@@ -207,8 +207,17 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
                     {displayTickets.map(ticket => {
                         const isUrl = ticket.fileType === 'url';
                         const isImage = !isUrl && (ticket.fileType ? ticket.fileType.startsWith('image/') : (ticket.imageUrl && ticket.imageUrl.indexOf('alt=media') !== -1));
+                        
+                        const handleCardClick = () => {
+                            if (isImage) {
+                                onZoom(ticket);
+                            } else {
+                                window.open(ticket.imageUrl, '_blank', 'noopener,noreferrer');
+                            }
+                        };
+
                         return (
-                        <div key={ticket.id} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#fff', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column' }}>
+                        <div key={ticket.id} onClick={handleCardClick} style={{ cursor: 'pointer', position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#fff', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column' }}>
                             {isUrl ? (
                                 <div style={{ width: '100%', height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E0F2FE' }}>
                                     <FaLink size={32} color="#0284C7" style={{ marginBottom: '8px' }} />
@@ -220,8 +229,7 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
                                 <img 
                                     src={ticket.imageUrl} 
                                     alt="Attachment"
-                                    onClick={() => onZoom(ticket)}
-                                    style={{ width: '100%', height: '120px', objectFit: 'cover', cursor: 'pointer', display: 'block' }}
+                                    style={{ width: '100%', height: '120px', objectFit: 'cover', display: 'block' }}
                                 />
                             ) : (
                                 <div style={{ width: '100%', height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
@@ -237,14 +245,16 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
                                 </span>
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                     {isImage ? (
-                                        <FaExpand onClick={() => onZoom(ticket)} style={{ cursor: 'pointer' }} />
+                                        <FaExpand onClick={(e) => { e.stopPropagation(); onZoom(ticket); }} style={{ cursor: 'pointer', color: 'white' }} />
                                     ) : (
-                                        <a href={ticket.imageUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'white', display: 'flex', alignItems: 'center' }}>
-                                            <FaExternalLinkAlt style={{ cursor: 'pointer' }} />
-                                        </a>
+                                        <div onClick={(e) => e.stopPropagation()} style={{ color: 'white', display: 'flex', alignItems: 'center' }}>
+                                            <a href={ticket.imageUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'white' }}>
+                                                <FaExternalLinkAlt style={{ cursor: 'pointer' }} />
+                                            </a>
+                                        </div>
                                     )}
                                     {ticket.ownerEmail === currentUser?.email && (
-                                        <FaTrash onClick={() => handleDelete(ticket)} style={{ cursor: 'pointer', color: '#FC8181' }} />
+                                        <FaTrash onClick={(e) => { e.stopPropagation(); handleDelete(ticket); }} style={{ cursor: 'pointer', color: '#FC8181' }} />
                                     )}
                                 </div>
                             </div>
