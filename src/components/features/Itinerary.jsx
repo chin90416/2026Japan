@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaCloudSun, FaCloudRain, FaSun, FaMapMarkerAlt, FaMap, FaInfoCircle, FaTicketAlt, FaClock, FaTimes, FaExternalLinkAlt, FaStickyNote, FaEdit, FaQrcode, FaExpand, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaCloudSun, FaCloudRain, FaSun, FaMapMarkerAlt, FaMap, FaInfoCircle, FaTicketAlt, FaClock, FaTimes, FaExternalLinkAlt, FaStickyNote, FaEdit, FaQrcode, FaExpand, FaTrash, FaFileAlt } from 'react-icons/fa';
 import { addMinutes, format, parse } from 'date-fns';
 import { SortableEventItem } from './SortableEventItem';
 import { useGlobal } from '../../contexts/GlobalContext';
@@ -30,15 +30,22 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
 
     const handleUpload = async () => {
         if (!selectedFile) {
-            alert("請選擇圖片檔");
+            alert("請選擇檔案");
             return;
         }
         setIsUploading(true);
         try {
-            const fileName = `tickets/${uuidv4()}_${selectedFile.name}`;
+            const fileName = `attachments/${uuidv4()}_${selectedFile.name}`;
             const downloadUrl = await uploadImage(selectedFile, fileName);
             
-            const newTicket = { id: uuidv4(), ownerEmail: ticketOwner, imageUrl: downloadUrl, timestamp: Date.now() };
+            const newTicket = { 
+                id: uuidv4(), 
+                ownerEmail: ticketOwner, 
+                imageUrl: downloadUrl,
+                fileName: selectedFile.name,
+                fileType: selectedFile.type,
+                timestamp: Date.now() 
+            };
             const updatedTickets = [...tickets, newTicket];
             
             await updateItineraryEvent(activeEvent.id, {
@@ -75,13 +82,13 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
         <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                    <FaQrcode color="#319795" /> 電子車票區
+                    <FaQrcode color="#319795" /> 票證 / 附件區
                 </div>
                 <button
                     onClick={() => setShowForm(!showForm)}
                     style={{ fontSize: '0.85rem', padding: '4px 12px', borderRadius: '12px', backgroundColor: '#E6FFFA', color: '#319795', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}
                 >
-                    {showForm ? '取消新增' : '+ 新增車票'}
+                    {showForm ? '取消新增' : '+ 新增附件'}
                 </button>
             </div>
 
@@ -99,11 +106,10 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
                         ))}
                     </select>
 
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-secondary)' }}>選擇圖片 (截圖或照片)</label>
+                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-secondary)' }}>選擇檔案 (票證/截圖/文件)</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input
                             type="file"
-                            accept="image/*"
                             onChange={handleFileChange}
                             style={{ flex: 1, fontSize: '0.85rem' }}
                             disabled={isUploading}
@@ -132,31 +138,48 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
 
             {displayTickets.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                    {displayTickets.map(ticket => (
-                        <div key={ticket.id} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#fff', boxShadow: 'var(--shadow-sm)' }}>
-                            <img 
-                                src={ticket.imageUrl} 
-                                alt="Ticket"
-                                onClick={() => onZoom(ticket)}
-                                style={{ width: '100%', height: '120px', objectFit: 'cover', cursor: 'pointer', display: 'block' }}
-                            />
+                    {displayTickets.map(ticket => {
+                        const isImage = ticket.fileType ? ticket.fileType.startsWith('image/') : (ticket.imageUrl && ticket.imageUrl.indexOf('alt=media') !== -1);
+                        return (
+                        <div key={ticket.id} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#fff', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column' }}>
+                            {isImage ? (
+                                <img 
+                                    src={ticket.imageUrl} 
+                                    alt="Attachment"
+                                    onClick={() => onZoom(ticket)}
+                                    style={{ width: '100%', height: '120px', objectFit: 'cover', cursor: 'pointer', display: 'block' }}
+                                />
+                            ) : (
+                                <div style={{ width: '100%', height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F5F9' }}>
+                                    <FaFileAlt size={32} color="#64748B" style={{ marginBottom: '8px' }} />
+                                    <div style={{ fontSize: '0.75rem', color: '#475569', textAlign: 'center', width: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {ticket.fileName || '附件檔案'}
+                                    </div>
+                                </div>
+                            )}
                             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 8px', backgroundColor: 'rgba(0,0,0,0.6)', color: 'white', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
                                     {userProfiles?.[ticket.ownerEmail] ? userProfiles[ticket.ownerEmail] : ticket.ownerEmail}
                                 </span>
                                 <div style={{ display: 'flex', gap: '8px' }}>
-                                    <FaExpand onClick={() => onZoom(ticket)} style={{ cursor: 'pointer' }} />
+                                    {isImage ? (
+                                        <FaExpand onClick={() => onZoom(ticket)} style={{ cursor: 'pointer' }} />
+                                    ) : (
+                                        <a href={ticket.imageUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'white', display: 'flex', alignItems: 'center' }}>
+                                            <FaExternalLinkAlt style={{ cursor: 'pointer' }} />
+                                        </a>
+                                    )}
                                     {ticket.ownerEmail === currentUser?.email && (
                                         <FaTrash onClick={() => handleDelete(ticket)} style={{ cursor: 'pointer', color: '#FC8181' }} />
                                     )}
                                 </div>
                             </div>
                         </div>
-                    ))}
+                    )})}
                 </div>
             ) : (
                 <div style={{ textAlign: 'center', padding: '16px', backgroundColor: '#F8FAFC', borderRadius: '8px', color: '#94A3B8', fontSize: '0.9rem' }}>
-                    尚未上傳任何車票
+                    尚未上傳任何附件
                 </div>
             )}
         </div>
@@ -642,13 +665,6 @@ export default function Itinerary() {
                                             <div><div style={{ fontSize: '0.8rem', color: '#64748b' }}>路線</div><strong>{selectedEventDetails.extraInfo.route || '---'}</strong></div>
                                             <div style={{ textAlign: 'right' }}><div style={{ fontSize: '0.8rem', color: '#64748b' }}>座位</div><strong>{selectedEventDetails.extraInfo.seat || '---'}</strong></div>
                                         </div>
-                                        <TicketDisplaySection
-                                            activeEvent={events.find(e => e.id === selectedEventDetails.id) || selectedEventDetails}
-                                            currentUser={currentUser}
-                                            allowedEmails={allowedEmails}
-                                            userProfiles={userProfiles || {}}
-                                            onZoom={setFullscreenTicket}
-                                        />
                                     </>
                                 )}
                                 {selectedEventDetails.type === 'flight' && (
@@ -659,6 +675,17 @@ export default function Itinerary() {
                                 )}
                             </div>
                         )}
+
+                        {/* 附件區 (開放給所有分類) */}
+                        <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: 'var(--radius-md)', border: `2px dashed #CBD5E1` }}>
+                            <TicketDisplaySection
+                                activeEvent={events.find(e => e.id === selectedEventDetails.id) || selectedEventDetails}
+                                currentUser={currentUser}
+                                allowedEmails={allowedEmails}
+                                userProfiles={userProfiles || {}}
+                                onZoom={setFullscreenTicket}
+                            />
+                        </div>
 
                         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
                             <button onClick={() => setSelectedEventDetails(null)} style={{ padding: '12px 24px', backgroundColor: '#f1f5f9', color: '#475569', borderRadius: '24px', fontWeight: 'bold', flex: 1, border: 'none', cursor: 'pointer' }}>

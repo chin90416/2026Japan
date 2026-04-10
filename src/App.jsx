@@ -21,7 +21,7 @@ export const preloadComponents = {
 };
 
 // 封裝 Suspense 載入中的畫面
-function LoadingSpinner() {
+export function LoadingSpinner() {
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-color)', color: 'var(--text-secondary)' }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
@@ -39,15 +39,15 @@ function PrivateRoute({ children }) {
 }
 
 function AppContent() {
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
   const { isGlobalLoading } = useGlobal();
+
+  if (authLoading || isGlobalLoading) {
+    return <LoadingSpinner />;
+  }
 
   if (!currentUser) {
     return <Login />;
-  }
-
-  if (isGlobalLoading) {
-    return <LoadingSpinner />;
   }
 
   return (

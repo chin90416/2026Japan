@@ -18,13 +18,15 @@ export const uploadImage = async (imageFile, storagePath) => {
             fileType: "image/webp" // 轉為 WebP 格式以獲得更好的壓縮率
         };
 
-        // 進行壓縮
+        // 進行壓縮 (僅限圖片)
         let compressedFile = imageFile;
-        try {
-            compressedFile = await imageCompression(imageFile, options);
-            console.log(`Original: ${(imageFile.size / 1024).toFixed(2)} KB -> Compressed: ${(compressedFile.size / 1024).toFixed(2)} KB`);
-        } catch (error) {
-            console.warn("壓縮圖片失敗，將上傳原圖:", error);
+        if (imageFile.type && imageFile.type.startsWith('image/')) {
+            try {
+                compressedFile = await imageCompression(imageFile, options);
+                console.log(`Original: ${(imageFile.size / 1024).toFixed(2)} KB -> Compressed: ${(compressedFile.size / 1024).toFixed(2)} KB`);
+            } catch (error) {
+                console.warn("壓縮圖片失敗，將上傳原圖:", error);
+            }
         }
 
         // 建立 Storage 參照

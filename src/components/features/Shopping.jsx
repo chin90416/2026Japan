@@ -6,6 +6,7 @@ import ImageCropper from '../common/ImageCropper';
 import { uploadImage, deleteImage } from '../../services/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { FaImage, FaCamera, FaCameraRetro } from 'react-icons/fa';
+import imageCompression from 'browser-image-compression';
 
 export default function Shopping() {
     const [activeTab, setActiveTab] = useState('souvenir');
@@ -62,15 +63,34 @@ export default function Shopping() {
     const [isUploading, setIsUploading] = useState(false);
 
     // --- Image Selection Handler ---
-    const handleImageSelect = (e) => {
+    const handleImageSelect = async (e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.addEventListener('load', () => {
-                setSelectedImageSrc(reader.result);
-                setIsCropping(true);
-            });
-            reader.readAsDataURL(file);
+            try {
+                // 自動轉正與初步壓縮，避免手機拍攝的照片 EXIF 導致預覽與上傳時畫面翻轉
+                const options = {
+                    maxSizeMB: 1.5, // 供預覽與裁切使用，不過度壓縮保留畫質
+                    maxWidthOrHeight: 1200,
+                    useWebWorker: true,
+                    // browser-image-compression 預設會自動調整 EXIF orientation
+                };
+                const compressedFile = await imageCompression(file, options);
+                
+                const reader = new FileReader();
+                reader.addEventListener('load', () => {
+                    setSelectedImageSrc(reader.result);
+                    setIsCropping(true);
+                });
+                reader.readAsDataURL(compressedFile);
+            } catch (error) {
+                console.warn("轉正/預壓縮圖片失敗，降級使用原圖:", error);
+                const reader = new FileReader();
+                reader.addEventListener('load', () => {
+                    setSelectedImageSrc(reader.result);
+                    setIsCropping(true);
+                });
+                reader.readAsDataURL(file);
+            }
         }
         e.target.value = ''; // Reset input so same file can be selected again
     };

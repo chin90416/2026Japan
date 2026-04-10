@@ -53,12 +53,13 @@ export function AuthProvider({ children }) {
     const value = {
         currentUser,
         login,
-        logout
+        logout,
+        loading
     };
 
     return (
         <AuthContext.Provider value={value}>
-            {!loading && children}
+            {children}
         </AuthContext.Provider>
     );
 }
