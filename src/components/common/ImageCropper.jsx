@@ -33,11 +33,10 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
                 reject(new Error('Canvas is empty'));
                 return;
             }
-            // 指定檔名與類型供後續上傳使用
+            // 直接回傳 Blob 即可供 Firebase 上傳使用，避免部份 Android 裝置 new File() 失敗產生空檔
             blob.name = 'cropped.jpg';
-            const file = new File([blob], 'cropped.jpg', { type: 'image/jpeg' });
-            resolve(file);
-        }, 'image/jpeg', 0.95);
+            resolve(blob);
+        }, 'image/jpeg', 0.92);
     });
 };
 
@@ -102,7 +101,7 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }) {
                     onCropChange={setCrop}
                     onCropComplete={handleCropComplete}
                     onZoomChange={setZoom}
-                    objectFit="vertical-cover"
+                    objectFit="contain" // 讓正方形圖片可以滿版顯示不強制撐滿高寬
                 />
             </div>
 

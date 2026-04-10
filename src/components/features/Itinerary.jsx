@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaCloudSun, FaCloudRain, FaSun, FaMapMarkerAlt, FaMap, FaInfoCircle, FaTicketAlt, FaClock, FaTimes, FaExternalLinkAlt, FaStickyNote, FaEdit, FaQrcode, FaExpand, FaTrash, FaFileAlt } from 'react-icons/fa';
+import { FaPlus, FaCloudSun, FaCloudRain, FaSun, FaMapMarkerAlt, FaMap, FaInfoCircle, FaTicketAlt, FaClock, FaTimes, FaExternalLinkAlt, FaStickyNote, FaEdit, FaQrcode, FaExpand, FaTrash, FaFileAlt, FaLink } from 'react-icons/fa';
 import { addMinutes, format, parse } from 'date-fns';
 import { SortableEventItem } from './SortableEventItem';
 import { useGlobal } from '../../contexts/GlobalContext';
@@ -13,6 +13,9 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
     const [showForm, setShowForm] = useState(false);
     const [ticketOwner, setTicketOwner] = useState(currentUser?.email || '');
     const [selectedFile, setSelectedFile] = useState(null);
+    const [uploadMode, setUploadMode] = useState('file'); // 'file' or 'link'
+    const [linkUrl, setLinkUrl] = useState('');
+    const [linkName, setLinkName] = useState('');
 
     const tickets = activeEvent.extraInfo?.tickets || [];
     const [viewOtherTickets, setViewOtherTickets] = useState(false);
@@ -29,21 +32,39 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
     };
 
     const handleUpload = async () => {
-        if (!selectedFile) {
-            alert("請選擇檔案");
-            return;
-        }
         setIsUploading(true);
         try {
-            const fileName = `tickets/${uuidv4()}_${selectedFile.name}`;
-            const downloadUrl = await uploadImage(selectedFile, fileName);
+            let downloadUrl;
+            let finalFileName;
+            let finalFileType;
+            
+            if (uploadMode === 'file') {
+                if (!selectedFile) {
+                    alert("請選擇檔案");
+                    setIsUploading(false);
+                    return;
+                }
+                finalFileName = selectedFile.name;
+                finalFileType = selectedFile.type;
+                const fileName = `tickets/${uuidv4()}_${selectedFile.name}`;
+                downloadUrl = await uploadImage(selectedFile, fileName);
+            } else {
+                if (!linkUrl.trim()) {
+                    alert("請輸入連結網址");
+                    setIsUploading(false);
+                    return;
+                }
+                downloadUrl = linkUrl.trim();
+                finalFileName = linkName.trim() || '雲端連結';
+                finalFileType = 'url';
+            }
             
             const newTicket = { 
                 id: uuidv4(), 
                 ownerEmail: ticketOwner, 
                 imageUrl: downloadUrl,
-                fileName: selectedFile.name,
-                fileType: selectedFile.type,
+                fileName: finalFileName,
+                fileType: finalFileType,
                 timestamp: Date.now() 
             };
             const updatedTickets = [...tickets, newTicket];
@@ -55,6 +76,8 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
             // reset form
             setShowForm(false);
             setSelectedFile(null);
+            setLinkUrl('');
+            setLinkName('');
             setTicketOwner(currentUser?.email || '');
         } catch (error) {
             console.error(error);
@@ -65,9 +88,11 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
     };
 
     const handleDelete = async (ticket) => {
-        if (!window.confirm("確定刪除此車票圖片？")) return;
+        if (!window.confirm("確定刪除此項目？")) return;
         try {
-            await deleteImage(ticket.imageUrl);
+            if (ticket.fileType !== 'url') {
+                await deleteImage(ticket.imageUrl);
+            }
             const updatedTickets = tickets.filter(t => t.id !== ticket.id);
             await updateItineraryEvent(activeEvent.id, {
                 extraInfo: { ...activeEvent.extraInfo, tickets: updatedTickets }
@@ -106,20 +131,61 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
                         ))}
                     </select>
 
-                    <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-secondary)' }}>選擇檔案 (票證/截圖/文件)</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input
-                            type="file"
-                            onChange={handleFileChange}
-                            style={{ flex: 1, fontSize: '0.85rem' }}
-                            disabled={isUploading}
-                        />
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                        <button
+                            onClick={() => setUploadMode('file')}
+                            style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: uploadMode === 'file' ? '#EBF8FF' : '#fff', color: uploadMode === 'file' ? '#3182CE' : '#4A5568', fontWeight: 'bold' }}
+                        >
+                            上傳檔案
+                        </button>
+                        <button
+                            onClick={() => setUploadMode('link')}
+                            style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', backgroundColor: uploadMode === 'link' ? '#EBF8FF' : '#fff', color: uploadMode === 'link' ? '#3182CE' : '#4A5568', fontWeight: 'bold' }}
+                        >
+                            提供連結
+                        </button>
+                    </div>
+
+                    {uploadMode === 'file' ? (
+                        <>
+                            <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-secondary)' }}>選擇檔案 (票證/截圖/文件)</label>
+                            <input
+                                type="file"
+                                onChange={handleFileChange}
+                                style={{ width: '100%', fontSize: '0.85rem', marginBottom: '12px' }}
+                                disabled={isUploading}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-secondary)' }}>連結網址 (Google Drive, Dropbox 等)</label>
+                            <input
+                                type="url"
+                                placeholder="http://..."
+                                value={linkUrl}
+                                onChange={e => setLinkUrl(e.target.value)}
+                                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', marginBottom: '8px', fontSize: '0.9rem' }}
+                                disabled={isUploading}
+                            />
+                            <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '4px', color: 'var(--text-secondary)' }}>顯示名稱 (選填)</label>
+                            <input
+                                type="text"
+                                placeholder="例如：JR Pass 使用說明"
+                                value={linkName}
+                                onChange={e => setLinkName(e.target.value)}
+                                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid var(--border-color)', marginBottom: '12px', fontSize: '0.9rem' }}
+                                disabled={isUploading}
+                            />
+                        </>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <button
                             onClick={handleUpload}
-                            disabled={isUploading || !selectedFile}
-                            style={{ padding: '6px 16px', backgroundColor: (isUploading || !selectedFile) ? '#CBD5E1' : 'var(--accent-color)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isUploading ? 'wait' : 'pointer' }}
+                            disabled={isUploading || (uploadMode === 'file' && !selectedFile)}
+                            style={{ padding: '6px 24px', backgroundColor: (isUploading || (uploadMode === 'file' && !selectedFile)) ? '#CBD5E1' : 'var(--accent-color)', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isUploading ? 'wait' : 'pointer' }}
                         >
-                            {isUploading ? '上傳中...' : '儲存'}
+                            {isUploading ? '處理中...' : '儲存'}
                         </button>
                     </div>
                 </div>
@@ -139,10 +205,18 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
             {displayTickets.length > 0 ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                     {displayTickets.map(ticket => {
-                        const isImage = ticket.fileType ? ticket.fileType.startsWith('image/') : (ticket.imageUrl && ticket.imageUrl.indexOf('alt=media') !== -1);
+                        const isUrl = ticket.fileType === 'url';
+                        const isImage = !isUrl && (ticket.fileType ? ticket.fileType.startsWith('image/') : (ticket.imageUrl && ticket.imageUrl.indexOf('alt=media') !== -1));
                         return (
                         <div key={ticket.id} style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', backgroundColor: '#fff', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column' }}>
-                            {isImage ? (
+                            {isUrl ? (
+                                <div style={{ width: '100%', height: '120px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E0F2FE' }}>
+                                    <FaLink size={32} color="#0284C7" style={{ marginBottom: '8px' }} />
+                                    <div style={{ fontSize: '0.75rem', color: '#0284C7', textAlign: 'center', width: '90%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
+                                        {ticket.fileName || '外部連結'}
+                                    </div>
+                                </div>
+                            ) : isImage ? (
                                 <img 
                                     src={ticket.imageUrl} 
                                     alt="Attachment"

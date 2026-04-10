@@ -33,7 +33,7 @@ export const uploadImage = async (imageFile, storagePath) => {
 
         // 設定檔案 Metadata
         const metadata = {
-            contentType: compressedFile.type || "image/webp",
+            contentType: compressedFile.type || "image/jpeg",
         };
 
         // 執行上傳
