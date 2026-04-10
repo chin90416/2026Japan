@@ -71,7 +71,7 @@ export default function Shopping() {
                 const options = {
                     maxSizeMB: 1.5, // 供預覽與裁切使用，不過度壓縮保留畫質
                     maxWidthOrHeight: 1200,
-                    useWebWorker: true,
+                    useWebWorker: false, // 關閉 WebWorker 避免部份 iOS Safari 記憶體不足或編碼出錯
                     // browser-image-compression 預設會自動調整 EXIF orientation
                 };
                 const compressedFile = await imageCompression(file, options);

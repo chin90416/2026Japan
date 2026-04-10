@@ -35,7 +35,7 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
         }
         setIsUploading(true);
         try {
-            const fileName = `attachments/${uuidv4()}_${selectedFile.name}`;
+            const fileName = `tickets/${uuidv4()}_${selectedFile.name}`;
             const downloadUrl = await uploadImage(selectedFile, fileName);
             
             const newTicket = { 
@@ -58,7 +58,7 @@ const TicketDisplaySection = ({ activeEvent, currentUser, allowedEmails, userPro
             setTicketOwner(currentUser?.email || '');
         } catch (error) {
             console.error(error);
-            alert("上傳車票失敗！");
+            alert("上傳附件失敗！");
         } finally {
             setIsUploading(false);
         }

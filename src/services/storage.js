@@ -14,8 +14,7 @@ export const uploadImage = async (imageFile, storagePath) => {
         const options = {
             maxSizeMB: 0.2, // 最大 200KB
             maxWidthOrHeight: 800, // 最大寬度或高度 800px (網格顯示很夠用了)
-            useWebWorker: true,
-            fileType: "image/webp" // 轉為 WebP 格式以獲得更好的壓縮率
+            useWebWorker: false // 關閉 WebWorker 避免部份 iOS Safari 記憶體不足或編碼失敗輸出空圖片
         };
 
         // 進行壓縮 (僅限圖片)
