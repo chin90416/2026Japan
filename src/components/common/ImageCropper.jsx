@@ -11,9 +11,15 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    // 確保只擷取指定的區塊 (通常是正方形)
-    canvas.width = pixelCrop.width;
-    canvas.height = pixelCrop.height;
+    // 為避免手機等裝置繪製超過 3000px 的超大畫布導致記憶體崩潰 (OOM) 產生空白 Blob，限制輸出最高解析度為 800px
+    const MAX_DIMENSION = 800;
+    const scale = Math.min(1, MAX_DIMENSION / pixelCrop.width, MAX_DIMENSION / pixelCrop.height);
+
+    const destWidth = pixelCrop.width * scale;
+    const destHeight = pixelCrop.height * scale;
+    
+    canvas.width = destWidth;
+    canvas.height = destHeight;
 
     ctx.drawImage(
         image,
@@ -23,8 +29,8 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
         pixelCrop.height,
         0,
         0,
-        pixelCrop.width,
-        pixelCrop.height
+        destWidth,
+        destHeight
     );
 
     return new Promise((resolve, reject) => {
