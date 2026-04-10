@@ -34,15 +34,20 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
     );
 
     return new Promise((resolve, reject) => {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        if (!dataUrl || dataUrl.length < 500) {
+            reject(new Error('無法產生圖片與預覽，可能是裝置記憶體不足。'));
+            return;
+        }
+
         canvas.toBlob((blob) => {
             if (!blob) {
                 reject(new Error('Canvas is empty'));
                 return;
             }
-            // 直接回傳 Blob 即可供 Firebase 上傳使用，避免部份 Android 裝置 new File() 失敗產生空檔
             blob.name = 'cropped.jpg';
-            resolve(blob);
-        }, 'image/jpeg', 0.92);
+            resolve({ blob, previewUrl: dataUrl });
+        }, 'image/jpeg', 0.85);
     });
 };
 
@@ -60,11 +65,11 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel }) {
         if (!croppedAreaPixels) return;
         setIsSaving(true);
         try {
-            const croppedImageFile = await getCroppedImg(imageSrc, croppedAreaPixels);
-            onCropComplete(croppedImageFile, URL.createObjectURL(croppedImageFile)); // 回傳 File 和預覽 URL
+            const { blob, previewUrl } = await getCroppedImg(imageSrc, croppedAreaPixels);
+            onCropComplete(blob, previewUrl);
         } catch (e) {
             console.error(e);
-            alert("處理圖片時發生錯誤。");
+            alert("處理圖片時發生錯誤：" + e.message);
         } finally {
             setIsSaving(false);
         }

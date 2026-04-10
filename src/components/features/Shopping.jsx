@@ -74,14 +74,19 @@ export default function Shopping() {
                     useWebWorker: false, // 關閉 WebWorker 避免部份 iOS Safari 記憶體不足或編碼出錯
                     // browser-image-compression 預設會自動調整 EXIF orientation
                 };
-                const compressedFile = await imageCompression(file, options);
+                const tempFile = await imageCompression(file, options);
+                let finalFile = tempFile;
+                if (tempFile.size < 500) {
+                    console.warn("壓縮生成異常檔案，退回原圖！");
+                    finalFile = file;
+                }
                 
                 const reader = new FileReader();
                 reader.addEventListener('load', () => {
                     setSelectedImageSrc(reader.result);
                     setIsCropping(true);
                 });
-                reader.readAsDataURL(compressedFile);
+                reader.readAsDataURL(finalFile);
             } catch (error) {
                 console.warn("轉正/預壓縮圖片失敗，降級使用原圖:", error);
                 const reader = new FileReader();

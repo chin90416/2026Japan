@@ -21,8 +21,13 @@ export const uploadImage = async (imageFile, storagePath) => {
         let compressedFile = imageFile;
         if (imageFile.type && imageFile.type.startsWith('image/')) {
             try {
-                compressedFile = await imageCompression(imageFile, options);
-                console.log(`Original: ${(imageFile.size / 1024).toFixed(2)} KB -> Compressed: ${(compressedFile.size / 1024).toFixed(2)} KB`);
+                const tempCompressed = await imageCompression(imageFile, options);
+                if (tempCompressed.size > 500) {
+                    compressedFile = tempCompressed;
+                    console.log(`Original: ${(imageFile.size / 1024).toFixed(2)} KB -> Compressed: ${(compressedFile.size / 1024).toFixed(2)} KB`);
+                } else {
+                    console.warn("二次壓縮檔案過小或損壞，退回原檔壓縮。");
+                }
             } catch (error) {
                 console.warn("壓縮圖片失敗，將上傳原圖:", error);
             }
