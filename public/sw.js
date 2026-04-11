@@ -1,4 +1,4 @@
-const CACHE_NAME = 'image-cache-v1';
+const CACHE_NAME = 'image-cache-v2';
 
 // 我們想攔截的網域（Firebase Storage 的圖資源網址通常帶有這個主機名稱）
 const TARGET_DOMAIN = 'firebasestorage.googleapis.com';
@@ -29,11 +29,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const requestUrl = new URL(event.request.url);
 
-    // 判斷是否為 Firebase Storage 圖片
-    const isFirebaseStorage = requestUrl.hostname.includes(TARGET_DOMAIN);
+    // 判斷是否為 Firebase Storage 圖片 (必須包含 alt=media 才是抓取實體圖片)
+    const isFirebaseStorage = requestUrl.hostname.includes(TARGET_DOMAIN) && requestUrl.searchParams.get('alt') === 'media';
 
     // 判斷是否為本地或其他來源的各種靜態圖片 (包含我們包進來的路線圖)
-    const isImageFile = requestUrl.pathname.match(/\.(png|jpe?g|svg|gif|webp)$/i);
+    // 排除 Firebase Storage 網域，因為 Firebase 的 metadata 請求路徑也可能包含 .jpg 但我們不想攔截
+    const isImageFile = !requestUrl.hostname.includes(TARGET_DOMAIN) && requestUrl.pathname.match(/\.(png|jpe?g|svg|gif|webp)$/i);
 
     // 只要是 Firebase 圖片或常見附檔名的靜態圖片的 GET 請求，就進行快取
     if ((isFirebaseStorage || isImageFile) && event.request.method === 'GET') {
